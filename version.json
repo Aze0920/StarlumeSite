@@ -1,8 +1,8 @@
 {
-  "version": "1.0.4",
+  "version": "1.0.6",
   "name": "星澜云站",
   "repo": "https://github.com/Aze0920/StarlumeSite",
   "branch": "main",
   "release_date": "2026-05-26",
-  "description": "小更新：优化前台兑换码验证台 UI，提升卡片、输入框、状态面板和移动端视觉效果。"
+  "description": "小更新：前台兑换页增加亮色动态渐变背景和柔和流动光斑动画。"
 }

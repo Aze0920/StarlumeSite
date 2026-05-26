@@ -34,6 +34,34 @@ function jmweb_write_update_log($message)
     file_put_contents($file, '[' . date('Y-m-d H:i:s') . '] ' . $message . PHP_EOL, FILE_APPEND);
 }
 
+function jmweb_find_php_cli()
+{
+    $candidates = array();
+    if (defined('PHP_BINDIR') && PHP_BINDIR) {
+        $candidates[] = PHP_BINDIR . DIRECTORY_SEPARATOR . 'php';
+        $candidates[] = dirname(PHP_BINDIR) . DIRECTORY_SEPARATOR . 'bin' . DIRECTORY_SEPARATOR . 'php';
+    }
+    $candidates[] = '/www/server/php/80/bin/php';
+    $candidates[] = '/www/server/php/81/bin/php';
+    $candidates[] = '/www/server/php/82/bin/php';
+    $candidates[] = '/www/server/php/74/bin/php';
+    $candidates[] = '/usr/bin/php';
+    $candidates[] = '/usr/local/bin/php';
+    $candidates[] = 'php';
+
+    foreach ($candidates as $candidate) {
+        $output = array();
+        $code = 0;
+        @exec(escapeshellarg($candidate) . ' -v 2>&1', $output, $code);
+        $text = implode("\n", $output);
+        if ($code === 0 && stripos($text, 'PHP') !== false && stripos($text, 'fpm-fcgi') === false) {
+            return $candidate;
+        }
+    }
+
+    return '';
+}
+
 function jmweb_api_json($data)
 {
     $buffer = ob_get_clean();
@@ -190,7 +218,18 @@ try {
             ));
         }
 
-        $php = defined('PHP_BINARY') && PHP_BINARY ? PHP_BINARY : 'php';
+        $php = jmweb_find_php_cli();
+        if ($php === '') {
+            jmweb_write_update_log('No available PHP CLI found. PHP_BINARY=' . (defined('PHP_BINARY') ? PHP_BINARY : 'unknown') . ', PHP_BINDIR=' . (defined('PHP_BINDIR') ? PHP_BINDIR : 'unknown'));
+            jmweb_api_json(array(
+                'ok' => false,
+                'message' => '更新失败：未找到可用的 PHP CLI，当前服务器可能只暴露了 php-fpm。',
+                'output' => jmweb_read_update_log(),
+                'log_path' => 'data/update.log',
+                'log' => jmweb_read_update_log(),
+            ));
+        }
+        jmweb_write_update_log('PHP CLI: ' . $php);
         $cmd = escapeshellarg($php) . ' ' . escapeshellarg($script) . ' 2>&1';
         jmweb_write_update_log('Command: ' . $cmd);
 
