@@ -1,8 +1,8 @@
 {
-  "version": "1.0.21",
+  "version": "1.0.22",
   "name": "豪猪接码",
   "repo": "https://github.com/Aze0920/StarlumeSite",
   "branch": "main",
   "release_date": "2026-05-26",
-  "description": "小更新：版本号测试更新。"
+  "description": "小更新：修复更新缓存导致版本回退，并增加更新后版本校验。"
 }

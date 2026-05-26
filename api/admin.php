@@ -151,6 +151,32 @@ try {
         return $json;
     }
 
+    function jmweb_read_local_version_file()
+    {
+        $file = dirname(__DIR__) . DIRECTORY_SEPARATOR . 'version.json';
+        if (!is_file($file)) {
+            return '';
+        }
+        $json = json_decode(file_get_contents($file), true);
+        if (!is_array($json) || empty($json['version'])) {
+            return '';
+        }
+        return (string) $json['version'];
+    }
+
+    function jmweb_read_local_app_version_file()
+    {
+        $file = dirname(__DIR__) . DIRECTORY_SEPARATOR . 'config' . DIRECTORY_SEPARATOR . 'app.php';
+        if (!is_file($file)) {
+            return '';
+        }
+        $content = file_get_contents($file);
+        if (preg_match("/JMWEB_VERSION'\s*,\s*'([^']+)'/", $content, $match)) {
+            return (string) $match[1];
+        }
+        return '';
+    }
+
     $action = isset($_POST['action']) ? $_POST['action'] : (isset($_GET['action']) ? $_GET['action'] : '');
 
     if ($action !== 'login') {
@@ -269,10 +295,18 @@ try {
         jmweb_write_update_log('Exit code: ' . $code);
 
         $log = jmweb_read_update_log();
+        $actualVersionJson = jmweb_read_local_version_file();
+        $actualVersionApp = jmweb_read_local_app_version_file();
+        jmweb_write_update_log('Actual local version.json after update: ' . ($actualVersionJson === '' ? 'unknown' : $actualVersionJson));
+        jmweb_write_update_log('Actual local config/app.php after update: ' . ($actualVersionApp === '' ? 'unknown' : $actualVersionApp));
+        $log = jmweb_read_update_log();
         jmweb_log('执行一键更新，退出码：' . $code);
         jmweb_api_json(array(
             'ok' => $code === 0,
-            'message' => $code === 0 ? '更新完成' : '更新失败，请查看日志',
+            'message' => $code === 0 ? '更新完成，当前文件版本：' . ($actualVersionApp !== '' ? $actualVersionApp : $actualVersionJson) : '更新失败，请查看日志',
+            'current_version' => $actualVersionApp !== '' ? $actualVersionApp : $actualVersionJson,
+            'version_json' => $actualVersionJson,
+            'version_app' => $actualVersionApp,
             'output' => $log,
             'log_path' => 'data/update.log',
             'log' => $log,

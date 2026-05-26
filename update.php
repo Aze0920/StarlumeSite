@@ -118,6 +118,70 @@ function backup_install_files($site)
     return $backupDir;
 }
 
+function read_version_from_json_file($file)
+{
+    if (!is_file($file)) {
+        return '';
+    }
+    $json = json_decode(file_get_contents($file), true);
+    if (!is_array($json) || empty($json['version'])) {
+        return '';
+    }
+    return (string) $json['version'];
+}
+
+function read_version_from_app_file($file)
+{
+    if (!is_file($file)) {
+        return '';
+    }
+    $content = file_get_contents($file);
+    if (preg_match("/JMWEB_VERSION'\s*,\s*'([^']+)'/", $content, $match)) {
+        return (string) $match[1];
+    }
+    if (preg_match('/JMWEB_VERSION"\s*,\s*"([^"]+)"/', $content, $match)) {
+        return (string) $match[1];
+    }
+    return '';
+}
+
+function clear_php_runtime_cache()
+{
+    if (function_exists('opcache_reset')) {
+        @opcache_reset();
+        update_log_write('CLEAR OPCACHE: opcache_reset called.');
+    }
+    if (function_exists('clearstatcache')) {
+        clearstatcache(true);
+        update_log_write('CLEAR STAT CACHE: clearstatcache called.');
+    }
+}
+
+function verify_update_versions($source, $target)
+{
+    clear_php_runtime_cache();
+
+    $sourceJsonVersion = read_version_from_json_file($source . DIRECTORY_SEPARATOR . 'version.json');
+    $targetJsonVersion = read_version_from_json_file($target . DIRECTORY_SEPARATOR . 'version.json');
+    $sourceAppVersion = read_version_from_app_file($source . DIRECTORY_SEPARATOR . 'config' . DIRECTORY_SEPARATOR . 'app.php');
+    $targetAppVersion = read_version_from_app_file($target . DIRECTORY_SEPARATOR . 'config' . DIRECTORY_SEPARATOR . 'app.php');
+
+    update_log_write('VERIFY SOURCE version.json: ' . ($sourceJsonVersion === '' ? 'unknown' : $sourceJsonVersion));
+    update_log_write('VERIFY TARGET version.json: ' . ($targetJsonVersion === '' ? 'unknown' : $targetJsonVersion));
+    update_log_write('VERIFY SOURCE config/app.php: ' . ($sourceAppVersion === '' ? 'unknown' : $sourceAppVersion));
+    update_log_write('VERIFY TARGET config/app.php: ' . ($targetAppVersion === '' ? 'unknown' : $targetAppVersion));
+
+    if ($sourceJsonVersion !== '' && $targetJsonVersion !== $sourceJsonVersion) {
+        update_log_write('ERROR: version.json was not updated correctly.');
+        return false;
+    }
+    if ($sourceAppVersion !== '' && $targetAppVersion !== $sourceAppVersion) {
+        update_log_write('ERROR: config/app.php was not updated correctly.');
+        return false;
+    }
+    return true;
+}
+
 function copy_update_files($source, $target, $root = null, &$stats = null)
 {
     if ($root === null) {
@@ -130,6 +194,9 @@ function copy_update_files($source, $target, $root = null, &$stats = null)
     $skipDirs = array('.git', 'logs');
     $skipRelativeDirs = array(
         'data/update-source',
+    );
+    $skipRelativeDirPrefixes = array(
+        'data/update-backup-',
     );
     $protectedFiles = array(
         'config/database.php',
@@ -154,7 +221,23 @@ function copy_update_files($source, $target, $root = null, &$stats = null)
 
         $relative = ltrim(str_replace(array($root, '\\'), array('', '/'), $from), '/');
         if (is_dir($from) && in_array($relative, $skipRelativeDirs, true)) {
+            update_log_write('SKIP INTERNAL DIR: ' . $relative);
+            $stats['skipped']++;
             continue;
+        }
+        if (is_dir($from)) {
+            $skipInternalDir = false;
+            foreach ($skipRelativeDirPrefixes as $prefix) {
+                if (strpos($relative, $prefix) === 0) {
+                    $skipInternalDir = true;
+                    break;
+                }
+            }
+            if ($skipInternalDir) {
+                update_log_write('SKIP INTERNAL DIR: ' . $relative);
+                $stats['skipped']++;
+                continue;
+            }
         }
         if (in_array($relative, $protectedFiles, true)) {
             update_log_write('SKIP PROTECTED FILE: ' . $relative);
@@ -249,12 +332,12 @@ if (!is_dir($workdir . DIRECTORY_SEPARATOR . '.git')) {
     }
 } else {
     update_log_write('Fetch and reset update source.');
-    $code = run_cmd('git fetch origin main', $workdir);
+    $code = run_cmd('git fetch --prune origin main', $workdir);
     if ($code !== 0) {
         update_log_write('ERROR: Fetch failed. Check network, branch, and repo permission.');
         exit($code);
     }
-    $code = run_cmd('git reset --hard origin/main', $workdir);
+    $code = run_cmd('git reset --hard FETCH_HEAD', $workdir);
     if ($code !== 0) {
         update_log_write('ERROR: Reset failed.');
         exit($code);
@@ -266,6 +349,10 @@ update_log_write('Compare file size and copy changed files to site dir.');
 $copyStats = array('updated' => 0, 'skipped' => 0, 'failed' => 0);
 copy_update_files($workdir, $site, $workdir, $copyStats);
 restore_install_files($site, $installBackupDir);
+if (!verify_update_versions($workdir, $site)) {
+    update_log_write('ERROR: Update verification failed, local version did not match update source.');
+    exit(1);
+}
 update_log_write('Copy summary: updated ' . $copyStats['updated'] . ' file(s), skipped ' . $copyStats['skipped'] . ' unchanged file(s), failed ' . $copyStats['failed'] . ' file(s).');
 if ($copyStats['failed'] > 0) {
     update_log_write('ERROR: Some files failed to copy.');
