@@ -1,8 +1,8 @@
 {
-  "version": "1.0.6",
+  "version": "1.0.7",
   "name": "星澜云站",
   "repo": "https://github.com/Aze0920/StarlumeSite",
   "branch": "main",
   "release_date": "2026-05-26",
-  "description": "小更新：前台兑换页增加亮色动态渐变背景和柔和流动光斑动画。"
+  "description": "小更新：修复后台更新缓存目录位于站点内导致文件未覆盖的问题，更新缓存移至站点外。"
 }

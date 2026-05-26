@@ -7,11 +7,11 @@ require_once __DIR__ . '/install.php';
 
 define('JMWEB_NAME', '星澜云站');
 define('JMWEB_REPO_NAME', 'StarlumeSite');
-define('JMWEB_VERSION', '1.0.6');
+define('JMWEB_VERSION', '1.0.7');
 define('JMWEB_UPDATE_REPO', 'https://github.com/Aze0920/StarlumeSite.git');
 define('JMWEB_UPDATE_INFO_URL', 'https://raw.githubusercontent.com/Aze0920/StarlumeSite/main/version.json');
 define('JMWEB_SITE_DIR', dirname(__DIR__));
-define('JMWEB_UPDATE_WORKDIR', dirname(__DIR__) . DIRECTORY_SEPARATOR . 'data' . DIRECTORY_SEPARATOR . 'update-source');
+define('JMWEB_UPDATE_WORKDIR', dirname(dirname(__DIR__)) . DIRECTORY_SEPARATOR . '.starlume-update-source');
 
 function jmweb_is_admin()
 {

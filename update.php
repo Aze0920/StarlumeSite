@@ -37,22 +37,14 @@ function run_cmd($cmd, $cwd = null)
     return (int) $code;
 }
 
-function path_starts_with($path, $prefix)
-{
-    return substr($path, 0, strlen($prefix)) === $prefix;
-}
-
 function copy_update_files($source, $target)
 {
     $skip = array('.git', 'data', 'logs');
-    $sourceReal = realpath($source) ? realpath($source) : $source;
-    $targetReal = realpath($target) ? realpath($target) : $target;
     $items = scandir($source) ? scandir($source) : array();
     foreach ($items as $item) {
         $from = $source . DIRECTORY_SEPARATOR . $item;
         $to = $target . DIRECTORY_SEPARATOR . $item;
-        $fromReal = realpath($from) ? realpath($from) : $from;
-        if ($item === '.' || $item === '..' || in_array($item, $skip, true) || $sourceReal === $targetReal || path_starts_with($fromReal, $targetReal . DIRECTORY_SEPARATOR)) {
+        if ($item === '.' || $item === '..' || in_array($item, $skip, true)) {
             continue;
         }
         if (is_dir($from)) {
