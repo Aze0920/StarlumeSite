@@ -1,8 +1,8 @@
 {
-  "version": "1.0.13",
+  "version": "1.0.14",
   "name": "豪猪接码",
   "repo": "https://github.com/Aze0920/StarlumeSite",
   "branch": "main",
   "release_date": "2026-05-26",
-  "description": "小更新：后台检查更新改为优先读取 GitHub API，避免 raw 缓存导致远程版本不刷新。"
+  "description": "小更新：测试自动更新。"
 }
