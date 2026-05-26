@@ -1,8 +1,8 @@
 {
-  "version": "1.0.16",
+  "version": "1.0.18",
   "name": "豪猪接码",
   "repo": "https://github.com/Aze0920/StarlumeSite",
   "branch": "main",
   "release_date": "2026-05-26",
-  "description": "小更新：自动更新测试。"
+  "description": "小更新：保护安装配置，修复同大小版本文件不更新。"
 }

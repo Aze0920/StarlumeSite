@@ -78,6 +78,15 @@ function copy_update_files($source, $target, $root = null, &$stats = null)
     }
 
     $skip = array('.git', 'data', 'logs');
+    $protectedFiles = array(
+        'config/database.php',
+        'data/install.lock',
+        'data/update.log',
+    );
+    $forceContentFiles = array(
+        'version.json',
+        'config/app.php',
+    );
     if (!is_dir($target)) {
         mkdir($target, 0755, true);
     }
@@ -90,6 +99,13 @@ function copy_update_files($source, $target, $root = null, &$stats = null)
             continue;
         }
 
+        $relative = ltrim(str_replace(array($root, '\\'), array('', '/'), $from), '/');
+        if (in_array($relative, $protectedFiles, true)) {
+            update_log_write('SKIP PROTECTED FILE: ' . $relative);
+            $stats['skipped']++;
+            continue;
+        }
+
         if (is_dir($from)) {
             copy_update_files($from, $to, $root, $stats);
             continue;
@@ -98,7 +114,9 @@ function copy_update_files($source, $target, $root = null, &$stats = null)
         $sourceSize = filesize($from);
         $oldSize = is_file($to) ? filesize($to) : -1;
         $needCopy = !is_file($to) || $oldSize !== $sourceSize;
-        $relative = ltrim(str_replace(array($root, '\\'), array('', '/'), $from), '/');
+        if (!$needCopy && in_array($relative, $forceContentFiles, true)) {
+            $needCopy = md5_file($from) !== md5_file($to);
+        }
 
         if (!$needCopy) {
             $stats['skipped']++;
@@ -151,26 +169,40 @@ if (!is_dir(dirname($workdir))) {
     mkdir(dirname($workdir), 0755, true);
 }
 
-if (is_dir($workdir)) {
-    update_log_write('Remove old update source dir: ' . $workdir);
-    if (!remove_dir_recursive($workdir)) {
-        update_log_write('ERROR: Remove old update source dir failed.');
-        exit(1);
-    }
-}
-
-update_log_write('Clone fresh repo: ' . $repo);
-$code = run_cmd('git clone --depth=1 ' . escapeshellarg($repo) . ' ' . escapeshellarg($workdir));
-if ($code !== 0) {
-    update_log_write('Depth clone failed, try full clone.');
+if (!is_dir($workdir . DIRECTORY_SEPARATOR . '.git')) {
     if (is_dir($workdir)) {
-        remove_dir_recursive($workdir);
+        update_log_write('Remove invalid update source dir: ' . $workdir);
+        if (!remove_dir_recursive($workdir)) {
+            update_log_write('ERROR: Remove invalid update source dir failed.');
+            exit(1);
+        }
     }
-    $code = run_cmd('git clone ' . escapeshellarg($repo) . ' ' . escapeshellarg($workdir));
+    update_log_write('Clone repo: ' . $repo);
+    $code = run_cmd('git clone --depth=1 ' . escapeshellarg($repo) . ' ' . escapeshellarg($workdir));
     if ($code !== 0) {
-        update_log_write('ERROR: Clone failed. Check network, repo URL, and GitHub access.');
+        update_log_write('Depth clone failed, try full clone.');
+        if (is_dir($workdir)) {
+            remove_dir_recursive($workdir);
+        }
+        $code = run_cmd('git clone ' . escapeshellarg($repo) . ' ' . escapeshellarg($workdir));
+        if ($code !== 0) {
+            update_log_write('ERROR: Clone failed. Check network, repo URL, and GitHub access.');
+            exit($code);
+        }
+    }
+} else {
+    update_log_write('Fetch and reset update source.');
+    $code = run_cmd('git fetch origin main', $workdir);
+    if ($code !== 0) {
+        update_log_write('ERROR: Fetch failed. Check network, branch, and repo permission.');
         exit($code);
     }
+    $code = run_cmd('git reset --hard origin/main', $workdir);
+    if ($code !== 0) {
+        update_log_write('ERROR: Reset failed.');
+        exit($code);
+    }
+    run_cmd('git clean -fd', $workdir);
 }
 
 update_log_write('Compare file size and copy changed files to site dir.');
