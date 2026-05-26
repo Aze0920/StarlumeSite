@@ -1,4 +1,4 @@
-# 星澜云站 / StarlumeSite
+# 豪猪接码 / StarlumeSite
 
 这是一个最简版 PHP 原生网站系统，可直接上传宝塔运行。
 

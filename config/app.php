@@ -5,9 +5,9 @@ if (session_status() === PHP_SESSION_NONE) {
 
 require_once __DIR__ . '/install.php';
 
-define('JMWEB_NAME', '星澜云站');
+define('JMWEB_NAME', '豪猪接码');
 define('JMWEB_REPO_NAME', 'StarlumeSite');
-define('JMWEB_VERSION', '1.0.7');
+define('JMWEB_VERSION', '1.0.8');
 define('JMWEB_UPDATE_REPO', 'https://github.com/Aze0920/StarlumeSite.git');
 define('JMWEB_UPDATE_INFO_URL', 'https://raw.githubusercontent.com/Aze0920/StarlumeSite/main/version.json');
 define('JMWEB_SITE_DIR', dirname(__DIR__));

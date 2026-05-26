@@ -1,8 +1,8 @@
 {
-  "version": "1.0.7",
-  "name": "星澜云站",
+  "version": "1.0.8",
+  "name": "豪猪接码",
   "repo": "https://github.com/Aze0920/StarlumeSite",
   "branch": "main",
   "release_date": "2026-05-26",
-  "description": "小更新：修复后台更新缓存目录位于站点内导致文件未覆盖的问题，更新缓存移至站点外。"
+  "description": "小更新：站点名称更新为豪猪接码。"
 }
