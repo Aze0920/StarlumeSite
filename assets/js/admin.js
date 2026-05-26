@@ -24,6 +24,16 @@ function setText(el, text) {
     if (el) el.textContent = text;
 }
 
+function setSettingsMessage(text, type) {
+    var el = document.getElementById('settingsMsg');
+    if (!el) {
+        if (text) alert(text);
+        return;
+    }
+    el.textContent = text || '';
+    el.className = 'settings-msg' + (type ? ' ' + type : '');
+}
+
 function showAdminPage(pageName, saveHash) {
     var target = document.getElementById('page-' + pageName);
     if (!target) pageName = 'dashboard';
@@ -172,19 +182,16 @@ if (settingsForm) {
             submitButton.disabled = true;
             submitButton.textContent = '保存中...';
         }
-        setText(settingsMsg, '正在保存设置...');
-        if (settingsMsg) settingsMsg.className = 'form-msg';
+        setSettingsMessage('正在保存设置...');
         var formData = new FormData(settingsForm);
         var payload = {};
         formData.forEach(function (value, key) { payload[key] = value; });
         try {
             var result = await postAdmin('save_settings', payload);
-            setText(settingsMsg, result.message || '保存完成');
-            if (settingsMsg && !result.ok) settingsMsg.className = 'form-msg error';
+            setSettingsMessage(result.message || '保存完成', result.ok ? 'success' : 'error');
             if (result.ok && result.settings) fillSettingsForm(result.settings);
         } catch (error) {
-            setText(settingsMsg, '保存失败：' + error.message);
-            if (settingsMsg) settingsMsg.className = 'form-msg error';
+            setSettingsMessage('保存失败：' + error.message, 'error');
         } finally {
             if (submitButton) {
                 submitButton.disabled = false;
@@ -198,16 +205,13 @@ if (resetSettingsBtn) {
     resetSettingsBtn.addEventListener('click', async function () {
         resetSettingsBtn.disabled = true;
         resetSettingsBtn.textContent = '恢复中...';
-        setText(settingsMsg, '正在恢复默认设置...');
-        if (settingsMsg) settingsMsg.className = 'form-msg';
+        setSettingsMessage('正在恢复默认设置...');
         try {
             var result = await postAdmin('reset_settings');
-            setText(settingsMsg, result.message || '已恢复默认');
-            if (settingsMsg && !result.ok) settingsMsg.className = 'form-msg error';
+            setSettingsMessage(result.message || '已恢复默认', result.ok ? 'success' : 'error');
             if (result.ok && result.settings) fillSettingsForm(result.settings);
         } catch (error) {
-            setText(settingsMsg, '恢复失败：' + error.message);
-            if (settingsMsg) settingsMsg.className = 'form-msg error';
+            setSettingsMessage('恢复失败：' + error.message, 'error');
         } finally {
             resetSettingsBtn.disabled = false;
             resetSettingsBtn.textContent = '恢复默认';
