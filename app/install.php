@@ -61,6 +61,19 @@ function installer_init_database($config, $adminUser, $adminPassword, $adminEmai
         PRIMARY KEY (`id`),
         UNIQUE KEY `idx_username` (`username`)
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+    $pdo->exec("CREATE TABLE IF NOT EXISTS `jm_cards` (
+        `id` int unsigned NOT NULL AUTO_INCREMENT,
+        `card_no` varchar(64) NOT NULL,
+        `status` varchar(20) NOT NULL DEFAULT 'available',
+        `used_at` int unsigned NOT NULL DEFAULT 0,
+        `disabled_at` int unsigned NOT NULL DEFAULT 0,
+        `created_at` int unsigned NOT NULL DEFAULT 0,
+        `updated_at` int unsigned NOT NULL DEFAULT 0,
+        PRIMARY KEY (`id`),
+        UNIQUE KEY `idx_card_no` (`card_no`),
+        KEY `idx_status` (`status`),
+        KEY `idx_created_at` (`created_at`)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
 
     $stmt = $pdo->prepare('SELECT COUNT(*) AS total FROM jm_admins WHERE username = ?');
     $stmt->execute([$adminUser]);

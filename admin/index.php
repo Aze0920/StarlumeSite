@@ -33,6 +33,7 @@ $jmwebSettings = jmweb_read_settings();
             <a class="brand" href="../"><span class="brand-mark">S</span><span data-setting-display="site_name"><?= htmlspecialchars($jmwebSettings['site_name'], ENT_QUOTES, 'UTF-8') ?></span></a>
             <div class="side-menu-main">
                 <button class="side-link active" data-page="dashboard">控制台</button>
+                <button class="side-link" data-page="cards">制作卡密</button>
                 <button class="side-link" data-page="settings">基本设置</button>
             </div>
             <div class="side-menu-bottom">
@@ -84,6 +85,77 @@ $jmwebSettings = jmweb_read_settings();
                         <button id="updateBtn" class="btn ghost hidden">立即更新</button>
                     </div>
                     <pre id="updateOutput" class="console-box">请先点击“检查更新”。</pre>
+                </div>
+            </section>
+
+            <section class="admin-page hidden" id="page-cards">
+                <div class="settings-hero-card card-hero-card">
+                    <div>
+                        <span class="eyebrow">Card Center</span>
+                        <h2>制作卡密</h2>
+                        <p>卡密统一以 <b>HZ-</b> 开头，一次最多制作 10000 张。右侧可查看可用、已用、禁用状态。</p>
+                    </div>
+                    <div class="settings-badge">HZ- 卡密</div>
+                </div>
+                <div class="cards-workspace">
+                    <section class="settings-card card-create-panel">
+                        <div class="settings-card-head">
+                            <strong>制作卡密</strong>
+                            <span>最多 10000 张</span>
+                        </div>
+                        <form id="cardCreateForm" class="card-create-form">
+                            <label class="setting-field">制作数量
+                                <input name="count" type="number" min="1" max="10000" value="10" placeholder="请输入制作数量">
+                            </label>
+                            <button class="btn primary full" type="submit">开始制作</button>
+                            <div id="cardCreateMsg" class="settings-msg">卡密格式：HZ-XXXX-XXXX-XXXX</div>
+                        </form>
+                        <div class="card-stats" id="cardStats">
+                            <div><strong>0</strong><span>全部</span></div>
+                            <div><strong>0</strong><span>可用</span></div>
+                            <div><strong>0</strong><span>已用</span></div>
+                            <div><strong>0</strong><span>禁用</span></div>
+                        </div>
+                    </section>
+                    <section class="settings-card card-list-panel">
+                        <div class="card-list-toolbar">
+                            <div>
+                                <strong>卡密详情</strong>
+                                <span id="cardListSummary">一列显示 10 个</span>
+                            </div>
+                            <div class="card-toolbar-controls">
+                                <select id="cardLimitSelect">
+                                    <option value="10">10</option>
+                                    <option value="50">50</option>
+                                    <option value="100">100</option>
+                                    <option value="500">500</option>
+                                    <option value="1000">1000</option>
+                                    <option value="5000">5000</option>
+                                    <option value="10000">10000</option>
+                                </select>
+                                <input id="cardKeyword" placeholder="搜索卡密">
+                            </div>
+                        </div>
+                        <div class="card-filter-row">
+                            <label><input type="checkbox" name="card_status" value="available" checked> 可用</label>
+                            <label><input type="checkbox" name="card_status" value="used" checked> 已用</label>
+                            <label><input type="checkbox" name="card_status" value="disabled" checked> 禁用</label>
+                            <button class="btn ghost" type="button" id="cardRefreshBtn">刷新</button>
+                        </div>
+                        <div class="card-batch-row">
+                            <label><input type="checkbox" id="cardSelectAll"> 全选当前页</label>
+                            <button class="btn ghost" type="button" data-card-batch="enable">启用</button>
+                            <button class="btn ghost" type="button" data-card-batch="disable">禁用</button>
+                            <button class="btn ghost danger-soft" type="button" data-card-batch="delete">删除</button>
+                            <span id="cardBatchMsg" class="muted">可多选后批量操作</span>
+                        </div>
+                        <div id="cardList" class="card-list empty">正在加载卡密...</div>
+                        <div class="card-pager">
+                            <button class="btn ghost" type="button" id="cardPrevPage">上一页</button>
+                            <span id="cardPageInfo">1 / 1</span>
+                            <button class="btn ghost" type="button" id="cardNextPage">下一页</button>
+                        </div>
+                    </section>
                 </div>
             </section>
 

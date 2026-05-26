@@ -1,8 +1,8 @@
 {
-  "version": "1.0.29",
+  "version": "1.0.30",
   "name": "豪猪接码",
   "repo": "https://github.com/Aze0920/StarlumeSite",
   "branch": "main",
-  "release_date": "2026-05-26",
-  "description": "小更新：优化后台侧边栏底部菜单，贴近浏览器底部且小窗口不遮挡上方列表。"
+  "release_date": "2026-05-27",
+  "description": "小更新：新增后台制作卡密与卡密详情管理，支持HZ-前缀生成、状态筛选、分页数量选择、多选和批量启用禁用删除。"
 }

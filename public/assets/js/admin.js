@@ -34,6 +34,12 @@ function setSettingsMessage(text, type) {
     el.className = 'settings-msg' + (type ? ' ' + type : '');
 }
 
+function setCardMessage(el, text, type) {
+    if (!el) return;
+    el.textContent = text || '';
+    el.className = 'settings-msg' + (type ? ' ' + type : '');
+}
+
 function showAdminPage(pageName, saveHash) {
     var target = document.getElementById('page-' + pageName);
     if (!target) pageName = 'dashboard';
@@ -177,6 +183,7 @@ function fillSettingsForm(settings) {
 }
 
 var settingsForm = document.getElementById('settingsForm');
+var settingsMsg = document.getElementById('settingsMsg');
 var resetSettingsBtn = document.getElementById('resetSettingsBtn');
 
 if (settingsForm) {
@@ -223,3 +230,183 @@ if (resetSettingsBtn) {
         }
     });
 }
+
+var cardState = {
+    page: 1,
+    pages: 1,
+    limit: 10,
+};
+
+function getCardStatuses() {
+    var statuses = [];
+    document.querySelectorAll('input[name="card_status"]:checked').forEach(function (item) {
+        statuses.push(item.value);
+    });
+    return statuses;
+}
+
+function selectedCardIds() {
+    var ids = [];
+    document.querySelectorAll('.card-check:checked').forEach(function (item) {
+        ids.push(item.value);
+    });
+    return ids;
+}
+
+function renderCardStats(stats) {
+    var el = document.getElementById('cardStats');
+    if (!el || !stats) return;
+    el.innerHTML = '';
+    [
+        ['total', '全部'],
+        ['available', '可用'],
+        ['used', '已用'],
+        ['disabled', '禁用'],
+    ].forEach(function (item) {
+        var box = document.createElement('div');
+        box.innerHTML = '<strong>' + (stats[item[0]] || 0) + '</strong><span>' + item[1] + '</span>';
+        el.appendChild(box);
+    });
+}
+
+function renderCards(cards) {
+    var list = document.getElementById('cardList');
+    if (!list) return;
+    list.innerHTML = '';
+    if (!cards || !cards.length) {
+        list.className = 'card-list empty';
+        list.textContent = '暂无卡密。';
+        return;
+    }
+    list.className = 'card-list';
+    cards.forEach(function (card) {
+        var item = document.createElement('label');
+        item.className = 'card-item status-' + card.status;
+        item.innerHTML = '<input class="card-check" type="checkbox" value="' + card.id + '">' +
+            '<span class="card-no">' + card.card_no + '</span>' +
+            '<span class="card-status">' + card.status_label + '</span>' +
+            '<small>创建：' + card.created_at_text + '</small>';
+        list.appendChild(item);
+    });
+}
+
+async function loadCards(resetPage) {
+    var list = document.getElementById('cardList');
+    var limitSelect = document.getElementById('cardLimitSelect');
+    var keywordInput = document.getElementById('cardKeyword');
+    var summary = document.getElementById('cardListSummary');
+    var pageInfo = document.getElementById('cardPageInfo');
+    var selectAll = document.getElementById('cardSelectAll');
+    if (!list || !limitSelect) return;
+    if (resetPage) cardState.page = 1;
+    cardState.limit = parseInt(limitSelect.value, 10) || 10;
+    list.className = 'card-list empty';
+    list.textContent = '正在加载卡密...';
+    if (selectAll) selectAll.checked = false;
+    try {
+        var result = await postAdmin('list_cards', {
+            limit: cardState.limit,
+            page: cardState.page,
+            keyword: keywordInput ? keywordInput.value : '',
+            statuses: getCardStatuses().join(','),
+        });
+        if (!result.ok) {
+            list.textContent = result.message || '加载失败';
+            return;
+        }
+        cardState.page = result.page || 1;
+        cardState.pages = result.pages || 1;
+        renderCards(result.cards || []);
+        renderCardStats(result.stats || {});
+        if (summary) summary.textContent = '一列显示 ' + (result.limit || cardState.limit) + ' 个，共 ' + (result.total || 0) + ' 个';
+        if (pageInfo) pageInfo.textContent = cardState.page + ' / ' + cardState.pages;
+    } catch (error) {
+        list.textContent = '加载失败：' + error.message;
+    }
+}
+
+var cardCreateForm = document.getElementById('cardCreateForm');
+if (cardCreateForm) {
+    loadCards(true);
+    cardCreateForm.addEventListener('submit', async function (event) {
+        event.preventDefault();
+        var msg = document.getElementById('cardCreateMsg');
+        var button = cardCreateForm.querySelector('button[type="submit"]');
+        var data = new FormData(cardCreateForm);
+        var count = parseInt(data.get('count'), 10) || 0;
+        if (count < 1 || count > 10000) {
+            setCardMessage(msg, '制作数量必须在 1 - 10000 之间。', 'error');
+            return;
+        }
+        if (button) {
+            button.disabled = true;
+            button.textContent = '制作中...';
+        }
+        setCardMessage(msg, '正在制作卡密，请稍等...');
+        try {
+            var result = await postAdmin('create_cards', { count: count });
+            setCardMessage(msg, result.message || '制作完成', result.ok ? 'success' : 'error');
+            if (result.ok) loadCards(true);
+        } catch (error) {
+            setCardMessage(msg, '制作失败：' + error.message, 'error');
+        } finally {
+            if (button) {
+                button.disabled = false;
+                button.textContent = '开始制作';
+            }
+        }
+    });
+}
+
+var cardLimitSelect = document.getElementById('cardLimitSelect');
+if (cardLimitSelect) cardLimitSelect.addEventListener('change', function () { loadCards(true); });
+var cardRefreshBtn = document.getElementById('cardRefreshBtn');
+if (cardRefreshBtn) cardRefreshBtn.addEventListener('click', function () { loadCards(true); });
+var cardKeyword = document.getElementById('cardKeyword');
+if (cardKeyword) cardKeyword.addEventListener('keydown', function (event) { if (event.key === 'Enter') loadCards(true); });
+document.querySelectorAll('input[name="card_status"]').forEach(function (item) {
+    item.addEventListener('change', function () { loadCards(true); });
+});
+var cardPrevPage = document.getElementById('cardPrevPage');
+if (cardPrevPage) cardPrevPage.addEventListener('click', function () {
+    if (cardState.page > 1) {
+        cardState.page--;
+        loadCards(false);
+    }
+});
+var cardNextPage = document.getElementById('cardNextPage');
+if (cardNextPage) cardNextPage.addEventListener('click', function () {
+    if (cardState.page < cardState.pages) {
+        cardState.page++;
+        loadCards(false);
+    }
+});
+var cardSelectAll = document.getElementById('cardSelectAll');
+if (cardSelectAll) cardSelectAll.addEventListener('change', function () {
+    document.querySelectorAll('.card-check').forEach(function (item) { item.checked = cardSelectAll.checked; });
+});
+document.querySelectorAll('[data-card-batch]').forEach(function (button) {
+    button.addEventListener('click', async function () {
+        var ids = selectedCardIds();
+        var msg = document.getElementById('cardBatchMsg');
+        var action = button.getAttribute('data-card-batch');
+        if (!ids.length) {
+            setText(msg, '请先选择卡密。');
+            return;
+        }
+        if (action === 'delete' && !confirm('确定删除选中的卡密吗？')) {
+            return;
+        }
+        button.disabled = true;
+        setText(msg, '正在操作...');
+        try {
+            var result = await postAdmin('batch_cards', { ids: ids.join(','), batch_action: action });
+            setText(msg, result.message || '操作完成');
+            loadCards(false);
+        } catch (error) {
+            setText(msg, '操作失败：' + error.message);
+        } finally {
+            button.disabled = false;
+        }
+    });
+});

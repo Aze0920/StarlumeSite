@@ -178,6 +178,80 @@ try {
         return '';
     }
 
+    function jmweb_random_card_part($length)
+    {
+        $chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+        $text = '';
+        $max = strlen($chars) - 1;
+        for ($i = 0; $i < $length; $i++) {
+            if (function_exists('random_int')) {
+                $text .= $chars[random_int(0, $max)];
+            } else {
+                $text .= $chars[mt_rand(0, $max)];
+            }
+        }
+        return $text;
+    }
+
+    function jmweb_generate_card_no()
+    {
+        return 'HZ-' . jmweb_random_card_part(4) . '-' . jmweb_random_card_part(4) . '-' . jmweb_random_card_part(4);
+    }
+
+    function jmweb_card_allowed_limit($limit)
+    {
+        $allowed = array(10, 50, 100, 500, 1000, 5000, 10000);
+        $limit = (int) $limit;
+        return in_array($limit, $allowed, true) ? $limit : 10;
+    }
+
+    function jmweb_card_clean_statuses($statuses)
+    {
+        if (!is_array($statuses)) {
+            $statuses = $statuses === '' ? array() : explode(',', (string) $statuses);
+        }
+        $allowed = array('available', 'used', 'disabled');
+        $clean = array();
+        foreach ($statuses as $status) {
+            $status = trim((string) $status);
+            if (in_array($status, $allowed, true) && !in_array($status, $clean, true)) {
+                $clean[] = $status;
+            }
+        }
+        return $clean;
+    }
+
+    function jmweb_card_ids_from_request()
+    {
+        $raw = isset($_POST['ids']) ? $_POST['ids'] : '';
+        if (is_array($raw)) {
+            $items = $raw;
+        } else {
+            $items = explode(',', (string) $raw);
+        }
+        $ids = array();
+        foreach ($items as $item) {
+            $id = (int) $item;
+            if ($id > 0 && !in_array($id, $ids, true)) {
+                $ids[] = $id;
+            }
+        }
+        return $ids;
+    }
+
+    function jmweb_card_rows($rows)
+    {
+        $result = array();
+        foreach ($rows as $row) {
+            $row['status_label'] = jmweb_card_status_label($row['status']);
+            $row['created_at_text'] = !empty($row['created_at']) ? date('Y-m-d H:i', (int) $row['created_at']) : '-';
+            $row['used_at_text'] = !empty($row['used_at']) ? date('Y-m-d H:i', (int) $row['used_at']) : '-';
+            $row['disabled_at_text'] = !empty($row['disabled_at']) ? date('Y-m-d H:i', (int) $row['disabled_at']) : '-';
+            $result[] = $row;
+        }
+        return $result;
+    }
+
     $action = isset($_POST['action']) ? $_POST['action'] : (isset($_GET['action']) ? $_GET['action'] : '');
 
     if ($action !== 'login') {
@@ -229,6 +303,135 @@ try {
         }
         jmweb_log('管理员恢复默认基本设置');
         jmweb_api_json(array('ok' => true, 'message' => '已恢复默认设置。', 'settings' => $settings));
+    }
+
+    if ($action === 'create_cards') {
+        jmweb_require_admin();
+        $count = isset($_POST['count']) ? (int) $_POST['count'] : 0;
+        if ($count < 1) {
+            jmweb_api_json(array('ok' => false, 'message' => '生成数量不能小于 1。'));
+        }
+        if ($count > 10000) {
+            jmweb_api_json(array('ok' => false, 'message' => '一次最多只能制作 10000 张卡密。'));
+        }
+
+        $pdo = jmweb_ensure_cards_table();
+        $insert = $pdo->prepare('INSERT IGNORE INTO jm_cards (card_no, status, created_at, updated_at) VALUES (?, ?, ?, ?)');
+        $created = 0;
+        $cards = array();
+        $now = time();
+        $tries = 0;
+        while ($created < $count && $tries < ($count * 8 + 80)) {
+            $tries++;
+            $cardNo = jmweb_generate_card_no();
+            $insert->execute(array($cardNo, 'available', $now, $now));
+            if ($insert->rowCount() > 0) {
+                $created++;
+                if (count($cards) < 100) {
+                    $cards[] = $cardNo;
+                }
+            }
+        }
+
+        jmweb_log('管理员制作卡密数量：' . $created);
+        jmweb_api_json(array(
+            'ok' => $created === $count,
+            'message' => $created === $count ? '已成功制作 ' . $created . ' 张卡密。' : '只成功制作 ' . $created . ' 张卡密，请重试。',
+            'created' => $created,
+            'sample' => $cards,
+        ));
+    }
+
+    if ($action === 'list_cards') {
+        jmweb_require_admin();
+        $pdo = jmweb_ensure_cards_table();
+        $limit = jmweb_card_allowed_limit(isset($_POST['limit']) ? $_POST['limit'] : 10);
+        $page = isset($_POST['page']) ? (int) $_POST['page'] : 1;
+        if ($page < 1) {
+            $page = 1;
+        }
+        $keyword = isset($_POST['keyword']) ? trim((string) $_POST['keyword']) : '';
+        $statuses = jmweb_card_clean_statuses(isset($_POST['statuses']) ? $_POST['statuses'] : '');
+
+        $where = array();
+        $params = array();
+        if ($keyword !== '') {
+            $where[] = 'card_no LIKE ?';
+            $params[] = '%' . $keyword . '%';
+        }
+        if (!empty($statuses)) {
+            $marks = implode(',', array_fill(0, count($statuses), '?'));
+            $where[] = 'status IN (' . $marks . ')';
+            foreach ($statuses as $status) {
+                $params[] = $status;
+            }
+        }
+        $whereSql = empty($where) ? '' : (' WHERE ' . implode(' AND ', $where));
+
+        $countStmt = $pdo->prepare('SELECT COUNT(*) AS total FROM jm_cards' . $whereSql);
+        $countStmt->execute($params);
+        $total = (int) $countStmt->fetchColumn();
+        $pages = max(1, (int) ceil($total / $limit));
+        if ($page > $pages) {
+            $page = $pages;
+        }
+        $offset = ($page - 1) * $limit;
+
+        $listSql = 'SELECT id, card_no, status, used_at, disabled_at, created_at, updated_at FROM jm_cards' . $whereSql . ' ORDER BY id DESC LIMIT ' . (int) $limit . ' OFFSET ' . (int) $offset;
+        $listStmt = $pdo->prepare($listSql);
+        $listStmt->execute($params);
+
+        $stats = array('total' => 0, 'available' => 0, 'used' => 0, 'disabled' => 0);
+        $statRows = $pdo->query('SELECT status, COUNT(*) AS total FROM jm_cards GROUP BY status')->fetchAll();
+        foreach ($statRows as $row) {
+            $key = isset($row['status']) ? $row['status'] : '';
+            $value = (int) $row['total'];
+            $stats['total'] += $value;
+            if (isset($stats[$key])) {
+                $stats[$key] = $value;
+            }
+        }
+
+        jmweb_api_json(array(
+            'ok' => true,
+            'cards' => jmweb_card_rows($listStmt->fetchAll()),
+            'total' => $total,
+            'page' => $page,
+            'pages' => $pages,
+            'limit' => $limit,
+            'stats' => $stats,
+        ));
+    }
+
+    if ($action === 'batch_cards') {
+        jmweb_require_admin();
+        $pdo = jmweb_ensure_cards_table();
+        $ids = jmweb_card_ids_from_request();
+        $batchAction = isset($_POST['batch_action']) ? trim((string) $_POST['batch_action']) : '';
+        if (empty($ids)) {
+            jmweb_api_json(array('ok' => false, 'message' => '请先选择卡密。'));
+        }
+        if (count($ids) > 10000) {
+            jmweb_api_json(array('ok' => false, 'message' => '一次最多操作 10000 条。'));
+        }
+        $marks = implode(',', array_fill(0, count($ids), '?'));
+        $now = time();
+        if ($batchAction === 'disable') {
+            $sql = 'UPDATE jm_cards SET status = ?, disabled_at = ?, updated_at = ? WHERE id IN (' . $marks . ') AND status != ?';
+            $params = array_merge(array('disabled', $now, $now), $ids, array('used'));
+        } elseif ($batchAction === 'enable') {
+            $sql = 'UPDATE jm_cards SET status = ?, disabled_at = 0, updated_at = ? WHERE id IN (' . $marks . ') AND status != ?';
+            $params = array_merge(array('available', $now), $ids, array('used'));
+        } elseif ($batchAction === 'delete') {
+            $sql = 'DELETE FROM jm_cards WHERE id IN (' . $marks . ')';
+            $params = $ids;
+        } else {
+            jmweb_api_json(array('ok' => false, 'message' => '未知批量操作。'));
+        }
+        $stmt = $pdo->prepare($sql);
+        $stmt->execute($params);
+        jmweb_log('管理员批量操作卡密：' . $batchAction . '，数量：' . count($ids));
+        jmweb_api_json(array('ok' => true, 'message' => '操作完成，影响 ' . $stmt->rowCount() . ' 条。'));
     }
 
     if ($action === 'check_update') {

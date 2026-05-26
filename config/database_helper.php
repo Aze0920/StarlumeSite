@@ -40,3 +40,33 @@ function jmweb_check_admin($username, $password)
         return false;
     }
 }
+
+function jmweb_ensure_cards_table()
+{
+    $pdo = jmweb_pdo();
+    $pdo->exec("CREATE TABLE IF NOT EXISTS `jm_cards` (
+        `id` int unsigned NOT NULL AUTO_INCREMENT,
+        `card_no` varchar(64) NOT NULL,
+        `status` varchar(20) NOT NULL DEFAULT 'available',
+        `used_at` int unsigned NOT NULL DEFAULT 0,
+        `disabled_at` int unsigned NOT NULL DEFAULT 0,
+        `created_at` int unsigned NOT NULL DEFAULT 0,
+        `updated_at` int unsigned NOT NULL DEFAULT 0,
+        PRIMARY KEY (`id`),
+        UNIQUE KEY `idx_card_no` (`card_no`),
+        KEY `idx_status` (`status`),
+        KEY `idx_created_at` (`created_at`)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+    return $pdo;
+}
+
+function jmweb_card_status_label($status)
+{
+    if ($status === 'used') {
+        return '已用';
+    }
+    if ($status === 'disabled') {
+        return '禁用';
+    }
+    return '可用';
+}
