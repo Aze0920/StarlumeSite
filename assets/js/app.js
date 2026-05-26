@@ -82,7 +82,7 @@
             }
             setMessage('兑换功能接口待接入，当前先展示手机号状态面板。', 'success');
 
-            var expiry = new Date(Date.now() + 8 * 60 * 1000);
+            var expiry = new Date(Date.now() + 5 * 60 * 1000);
             renderActivation({
                 phone: '-',
                 state: '待接入',

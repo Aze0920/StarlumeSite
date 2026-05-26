@@ -41,7 +41,7 @@ if ($path === '/' || $path === '/index.php') {
         <section class="redeem-hero">
             <p class="eyebrow">Voucher Exchange</p>
             <h1>兑换码验证</h1>
-            <p class="lead">兑换后 8 分钟到期，没收到验证码或者手机无法使用，可以过 2 分钟后点击取消激活，可以重新兑换会更换新的号码。收到验证码后兑换券会被消费。一个号只能接一次码。</p>
+            <p class="lead">兑换后 5 分钟到期，没收到验证码或者手机无法使用，可以过 2 分钟后点击取消激活，可以重新兑换会更换新的号码。收到验证码后兑换券会被消费。一个号只能接一次码。</p>
             <p class="service-notice"><strong>使用提示：</strong>不退不换，手机号错误点击取消激活，多兑换几次。</p>
         </section>
 
