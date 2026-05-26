@@ -70,6 +70,7 @@ function installer_init_database($config, $adminUser, $adminPassword, $adminEmai
         `provider_uid` varchar(80) NOT NULL DEFAULT '',
         `provider_sid` varchar(80) NOT NULL DEFAULT '',
         `provider_host` varchar(120) NOT NULL DEFAULT '',
+        `provider_token` varchar(255) NOT NULL DEFAULT '',
         `sms_code` varchar(40) NOT NULL DEFAULT '',
         `sms_text` text NULL,
         `expires_at` int unsigned NOT NULL DEFAULT 0,

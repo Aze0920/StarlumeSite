@@ -1,8 +1,8 @@
 {
-  "version": "1.0.37",
+  "version": "1.0.38",
   "name": "豪猪接码",
   "repo": "https://github.com/Aze0920/StarlumeSite",
   "branch": "main",
   "release_date": "2026-05-27",
-  "description": "小更新：优化后台卡密选择逻辑，单击卡密行即可选择或取消，拖动选择保持连续选择体验。"
+  "description": "小更新：修复验证码轮询使用新 token 导致可能取不到码的问题，取号时保存同一会话 token，取码时优先使用取号 token，并记录取码接口返回日志。"
 }

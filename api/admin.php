@@ -386,9 +386,9 @@ try {
             'phone' => $phone,
         ));
         if (isset($json['code']) && (string) $json['code'] === '0' && (!empty($json['yzm']) || !empty($json['sms']))) {
-            return array('ok' => true, 'code' => isset($json['yzm']) ? (string) $json['yzm'] : '', 'sms' => isset($json['sms']) ? (string) $json['sms'] : '', 'message' => isset($json['msg']) ? (string) $json['msg'] : '成功');
+            return array('ok' => true, 'code' => isset($json['yzm']) ? (string) $json['yzm'] : '', 'sms' => isset($json['sms']) ? (string) $json['sms'] : '', 'message' => isset($json['msg']) ? (string) $json['msg'] : '成功', 'raw' => $raw);
         }
-        return array('ok' => false, 'code' => '', 'sms' => '', 'message' => isset($json['msg']) ? (string) $json['msg'] : ($raw ? (string) $raw : '暂未收到验证码'));
+        return array('ok' => false, 'code' => '', 'sms' => '', 'message' => isset($json['msg']) ? (string) $json['msg'] : ($raw ? (string) $raw : '暂未收到验证码'), 'raw' => $raw);
     }
 
     $action = isset($_POST['action']) ? $_POST['action'] : (isset($_GET['action']) ? $_GET['action'] : '');
@@ -435,12 +435,13 @@ try {
             jmweb_api_json(array('ok' => false, 'message' => '获取手机号失败：' . (isset($json['msg']) ? $json['msg'] : ($raw ? $raw : '接口无响应'))));
         }
         $expiresAt = $now + 240;
-        $update = $pdo->prepare('UPDATE jm_cards SET phone = ?, provider_uid = ?, provider_sid = ?, provider_host = ?, expires_at = ?, updated_at = ? WHERE id = ? AND status = ?');
-        $update->execute(array((string) $json['phone'], isset($json['uid']) ? (string) $json['uid'] : '', isset($json['sid']) ? (string) $json['sid'] : $card['project_id'], $login['host'], $expiresAt, $now, $card['id'], 'available'));
+        $update = $pdo->prepare('UPDATE jm_cards SET phone = ?, provider_uid = ?, provider_sid = ?, provider_host = ?, provider_token = ?, expires_at = ?, updated_at = ? WHERE id = ? AND status = ?');
+        $update->execute(array((string) $json['phone'], isset($json['uid']) ? (string) $json['uid'] : '', isset($json['sid']) ? (string) $json['sid'] : $card['project_id'], $login['host'], $login['token'], $expiresAt, $now, $card['id'], 'available'));
         $card['phone'] = (string) $json['phone'];
         $card['provider_uid'] = isset($json['uid']) ? (string) $json['uid'] : '';
         $card['provider_sid'] = isset($json['sid']) ? (string) $json['sid'] : $card['project_id'];
         $card['provider_host'] = $login['host'];
+        $card['provider_token'] = $login['token'];
         $card['expires_at'] = $expiresAt;
         jmweb_api_json(array('ok' => true, 'message' => '已获取手机号，请在 240 秒内等待验证码。', 'activation' => jmweb_public_activation_payload($card, '等待验证码', '', '')));
     }
@@ -467,7 +468,8 @@ try {
             jmweb_api_json(array('ok' => false, 'message' => $login['message']));
         }
         $host = !empty($card['provider_host']) ? $card['provider_host'] : $login['host'];
-        $sms = jmweb_haozhu_get_message($settings, $host, $login['token'], $card['project_id'], $card['phone']);
+        $token = !empty($card['provider_token']) ? $card['provider_token'] : $login['token'];
+        $sms = jmweb_haozhu_get_message($settings, $host, $token, $card['project_id'], $card['phone']);
         if (!empty($sms['ok'])) {
             $now = time();
             $update = $pdo->prepare('UPDATE jm_cards SET status = ?, sms_code = ?, sms_text = ?, used_at = ?, updated_at = ? WHERE id = ? AND status = ?');
@@ -477,6 +479,7 @@ try {
             $card['sms_text'] = $sms['sms'];
             jmweb_api_json(array('ok' => true, 'received' => true, 'message' => '已收到验证码，兑换券已消费。', 'activation' => jmweb_public_activation_payload($card, '已收到', $sms['code'], $sms['sms'])));
         }
+        jmweb_write_update_log('Haozhu getMessage pending: project=' . $card['project_id'] . ', phone=' . $card['phone'] . ', host=' . $host . ', msg=' . $sms['message'] . ', raw=' . (isset($sms['raw']) ? $sms['raw'] : ''));
         jmweb_api_json(array('ok' => true, 'received' => false, 'message' => '暂未收到验证码。', 'activation' => jmweb_public_activation_payload($card, '等待验证码', '', '')));
     }
 
@@ -500,8 +503,8 @@ try {
             jmweb_api_json(array('ok' => false, 'message' => '240 秒内持续获取验证码，暂不能更换号码。', 'activation' => jmweb_public_activation_payload($card, '等待验证码', '', '')));
         }
         $now = time();
-        $update = $pdo->prepare('UPDATE jm_cards SET phone = ?, provider_uid = ?, provider_sid = ?, provider_host = ?, expires_at = 0, updated_at = ? WHERE id = ? AND status = ?');
-        $update->execute(array('', '', '', '', $now, $card['id'], 'available'));
+        $update = $pdo->prepare('UPDATE jm_cards SET phone = ?, provider_uid = ?, provider_sid = ?, provider_host = ?, provider_token = ?, expires_at = 0, updated_at = ? WHERE id = ? AND status = ?');
+        $update->execute(array('', '', '', '', '', $now, $card['id'], 'available'));
         jmweb_api_json(array('ok' => true, 'message' => '已取消当前号码，可以重新兑换更换手机号。'));
     }
 
