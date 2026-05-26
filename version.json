@@ -1,8 +1,8 @@
 {
-  "version": "1.0.8",
+  "version": "1.0.11",
   "name": "豪猪接码",
   "repo": "https://github.com/Aze0920/StarlumeSite",
   "branch": "main",
   "release_date": "2026-05-26",
-  "description": "小更新：站点名称更新为豪猪接码。"
+  "description": "小更新：修复一键上传编码和失败状态判断，后台更新目录改为站点 data/update-source 避免宝塔权限问题。"
 }

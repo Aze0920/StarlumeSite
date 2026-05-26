@@ -37,9 +37,20 @@ function run_cmd($cmd, $cwd = null)
     return (int) $code;
 }
 
-function copy_update_files($source, $target)
+function copy_update_files($source, $target, $root = null, &$stats = null)
 {
+    if ($root === null) {
+        $root = $source;
+    }
+    if ($stats === null) {
+        $stats = array('updated' => 0, 'skipped' => 0, 'failed' => 0);
+    }
+
     $skip = array('.git', 'data', 'logs');
+    if (!is_dir($target)) {
+        mkdir($target, 0755, true);
+    }
+
     $items = scandir($source) ? scandir($source) : array();
     foreach ($items as $item) {
         $from = $source . DIRECTORY_SEPARATOR . $item;
@@ -47,17 +58,41 @@ function copy_update_files($source, $target)
         if ($item === '.' || $item === '..' || in_array($item, $skip, true)) {
             continue;
         }
+
         if (is_dir($from)) {
-            if (!is_dir($to)) {
-                mkdir($to, 0755, true);
+            copy_update_files($from, $to, $root, $stats);
+            continue;
+        }
+
+        $sourceSize = filesize($from);
+        $oldSize = is_file($to) ? filesize($to) : -1;
+        $needCopy = !is_file($to) || $oldSize !== $sourceSize;
+        $relative = ltrim(str_replace(array($root, '\\'), array('', '/'), $from), '/');
+
+        if (!$needCopy) {
+            $stats['skipped']++;
+            continue;
+        }
+
+        $toDir = dirname($to);
+        if (!is_dir($toDir)) {
+            mkdir($toDir, 0755, true);
+        }
+
+        if (copy($from, $to)) {
+            $stats['updated']++;
+            if ($oldSize >= 0) {
+                update_log_write('UPDATE FILE: ' . $relative . ' (' . $oldSize . ' -> ' . $sourceSize . ' bytes)');
+            } else {
+                update_log_write('ADD FILE: ' . $relative . ' (' . $sourceSize . ' bytes)');
             }
-            copy_update_files($from, $to);
         } else {
-            if (!copy($from, $to)) {
-                update_log_write('COPY FAILED: ' . $from . ' -> ' . $to);
-            }
+            $stats['failed']++;
+            update_log_write('COPY FAILED: ' . $relative . ' | ' . $from . ' -> ' . $to);
         }
     }
+
+    return $stats;
 }
 
 update_log_write('Start update ' . JMWEB_NAME);
@@ -101,6 +136,12 @@ if (!is_dir($workdir . DIRECTORY_SEPARATOR . '.git')) {
     }
 }
 
-update_log_write('Copy files to site dir.');
-copy_update_files($workdir, $site);
+update_log_write('Compare file size and copy changed files to site dir.');
+$copyStats = array('updated' => 0, 'skipped' => 0, 'failed' => 0);
+copy_update_files($workdir, $site, $workdir, $copyStats);
+update_log_write('Copy summary: updated ' . $copyStats['updated'] . ' file(s), skipped ' . $copyStats['skipped'] . ' unchanged file(s), failed ' . $copyStats['failed'] . ' file(s).');
+if ($copyStats['failed'] > 0) {
+    update_log_write('ERROR: Some files failed to copy.');
+    exit(1);
+}
 update_log_write('Update done.');
