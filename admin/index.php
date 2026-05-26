@@ -148,6 +148,7 @@ $jmwebSettings = jmweb_read_settings();
                         </div>
                         <div class="card-batch-row">
                             <label><input type="checkbox" id="cardSelectAll"> 全选当前页</label>
+                            <button class="btn ghost" type="button" id="copyCardsBtn">复制卡密</button>
                             <button class="btn ghost" type="button" data-card-batch="enable">启用</button>
                             <button class="btn ghost" type="button" data-card-batch="disable">禁用</button>
                             <button class="btn ghost danger-soft" type="button" data-card-batch="delete">删除</button>

@@ -1,8 +1,8 @@
 {
-  "version": "1.0.34",
+  "version": "1.0.35",
   "name": "豪猪接码",
   "repo": "https://github.com/Aze0920/StarlumeSite",
   "branch": "main",
   "release_date": "2026-05-27",
-  "description": "小更新：前台兑换接入真实取号，获取手机号后显示手机号，并在240秒内自动轮询验证码，超时后允许更换号码。"
+  "description": "小更新：后台卡密详情显示手机号和验证码，隐藏创建时间，支持拖动选择卡密，并新增复制选中卡密按钮。"
 }

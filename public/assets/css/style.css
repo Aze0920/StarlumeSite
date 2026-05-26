@@ -193,11 +193,14 @@ code { padding: 3px 7px; border-radius: 8px; background: #eef2ff; color: #4338ca
 .card-filter-row, .card-batch-row { justify-content: flex-start; margin: 12px 0; color: #344054; font-weight: 800; }
 .card-filter-row label, .card-batch-row label { display: inline-flex; align-items: center; gap: 7px; }
 .danger-soft { color: #b42318 !important; border-color: rgba(244, 63, 94, .24) !important; background: #fff1f2 !important; }
-.card-list { display: grid; grid-template-columns: 1fr; gap: 9px; max-height: 640px; overflow: auto; padding: 12px; border-radius: 20px; background: #f8fafc; border: 1px solid #eef2ff; }
+.card-list { display: grid; grid-template-columns: 1fr; gap: 9px; max-height: 640px; overflow: auto; padding: 12px; border-radius: 20px; background: #f8fafc; border: 1px solid #eef2ff; user-select: none; }
 .card-list.empty { min-height: 220px; place-items: center; color: var(--muted); font-weight: 850; }
-.card-item { display: grid; grid-template-columns: auto minmax(180px, 1fr) auto auto; align-items: center; gap: 12px; padding: 12px 14px; border-radius: 16px; background: white; border: 1px solid #edf2f7; cursor: pointer; }
+.card-item { display: grid; grid-template-columns: auto minmax(210px, 1.2fr) auto repeat(3, minmax(120px, .75fr)); align-items: center; gap: 12px; padding: 12px 14px; border-radius: 16px; background: white; border: 1px solid #edf2f7; cursor: pointer; transition: .18s ease; }
+.card-item:hover, .card-item.is-selected { border-color: rgba(99, 91, 255, .42); background: #f5f7ff; box-shadow: 0 10px 24px rgba(99, 91, 255, .08); }
 .card-no { font-weight: 950; letter-spacing: .06em; color: #101828; }
-.card-status { padding: 6px 10px; border-radius: 999px; font-weight: 900; font-size: .82rem; }
+.card-status { padding: 6px 10px; border-radius: 999px; font-weight: 900; font-size: .82rem; text-align: center; }
+.card-meta { color: #475467; font-size: .88rem; font-weight: 750; white-space: nowrap; }
+.card-meta b { color: #101828; }
 .card-item small { color: var(--muted); }
 .status-available .card-status { color: #047857; background: #d1fae5; }
 .status-used .card-status { color: #7c2d12; background: #ffedd5; }
@@ -250,7 +253,7 @@ code { padding: 3px 7px; border-radius: 8px; background: #eef2ff; color: #4338ca
     .update-status-card { grid-template-columns: 1fr; }
     .cards-workspace { grid-template-columns: 1fr; }
     .card-item { grid-template-columns: auto 1fr; }
-    .card-status, .card-item small { grid-column: 2; }
+    .card-status, .card-meta, .card-item small { grid-column: 2; justify-self: start; }
     .settings-grid.two { grid-template-columns: 1fr; }
     .settings-actions { align-items: stretch; flex-direction: column; }
     .settings-actions .hero-actions { width: 100%; }

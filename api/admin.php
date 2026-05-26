@@ -470,9 +470,11 @@ try {
         $sms = jmweb_haozhu_get_message($settings, $host, $login['token'], $card['project_id'], $card['phone']);
         if (!empty($sms['ok'])) {
             $now = time();
-            $update = $pdo->prepare('UPDATE jm_cards SET status = ?, used_at = ?, updated_at = ? WHERE id = ? AND status = ?');
-            $update->execute(array('used', $now, $now, $card['id'], 'available'));
+            $update = $pdo->prepare('UPDATE jm_cards SET status = ?, sms_code = ?, sms_text = ?, used_at = ?, updated_at = ? WHERE id = ? AND status = ?');
+            $update->execute(array('used', $sms['code'], $sms['sms'], $now, $now, $card['id'], 'available'));
             $card['status'] = 'used';
+            $card['sms_code'] = $sms['code'];
+            $card['sms_text'] = $sms['sms'];
             jmweb_api_json(array('ok' => true, 'received' => true, 'message' => '已收到验证码，兑换券已消费。', 'activation' => jmweb_public_activation_payload($card, '已收到', $sms['code'], $sms['sms'])));
         }
         jmweb_api_json(array('ok' => true, 'received' => false, 'message' => '暂未收到验证码。', 'activation' => jmweb_public_activation_payload($card, '等待验证码', '', '')));
@@ -643,7 +645,7 @@ try {
         }
         $offset = ($page - 1) * $limit;
 
-        $listSql = 'SELECT id, card_no, project_id, status, phone, provider_uid, provider_sid, used_at, disabled_at, created_at, updated_at FROM jm_cards' . $whereSql . ' ORDER BY id DESC LIMIT ' . (int) $limit . ' OFFSET ' . (int) $offset;
+        $listSql = 'SELECT id, card_no, project_id, status, phone, sms_code, sms_text, provider_uid, provider_sid, used_at, disabled_at, created_at, updated_at FROM jm_cards' . $whereSql . ' ORDER BY id DESC LIMIT ' . (int) $limit . ' OFFSET ' . (int) $offset;
         $listStmt = $pdo->prepare($listSql);
         $listStmt->execute($params);
 
