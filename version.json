@@ -1,8 +1,8 @@
 {
-  "version": "1.0.24",
+  "version": "1.0.25",
   "name": "豪猪接码",
   "repo": "https://github.com/Aze0920/StarlumeSite",
   "branch": "main",
   "release_date": "2026-05-26",
-  "description": "小更新：前台兑换有效期提示改为 5 分钟。"
+  "description": "小更新：修复同大小文件内容变化不更新，并保持前台 5 分钟提示。"
 }

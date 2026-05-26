@@ -203,10 +203,6 @@ function copy_update_files($source, $target, $root = null, &$stats = null)
         'data/install.lock',
         'data/update.log',
     );
-    $forceContentFiles = array(
-        'version.json',
-        'config/app.php',
-    );
     if (!is_dir($target)) {
         mkdir($target, 0755, true);
     }
@@ -253,7 +249,7 @@ function copy_update_files($source, $target, $root = null, &$stats = null)
         $sourceSize = filesize($from);
         $oldSize = is_file($to) ? filesize($to) : -1;
         $needCopy = !is_file($to) || $oldSize !== $sourceSize;
-        if (!$needCopy && in_array($relative, $forceContentFiles, true)) {
+        if (!$needCopy && is_file($to)) {
             $needCopy = md5_file($from) !== md5_file($to);
         }
 
