@@ -37,6 +37,37 @@ function run_cmd($cmd, $cwd = null)
     return (int) $code;
 }
 
+function remove_dir_recursive($dir)
+{
+    if (!is_dir($dir)) {
+        return true;
+    }
+
+    $items = scandir($dir) ? scandir($dir) : array();
+    foreach ($items as $item) {
+        if ($item === '.' || $item === '..') {
+            continue;
+        }
+        $path = $dir . DIRECTORY_SEPARATOR . $item;
+        if (is_dir($path) && !is_link($path)) {
+            if (!remove_dir_recursive($path)) {
+                return false;
+            }
+        } else {
+            if (!@unlink($path)) {
+                update_log_write('DELETE FILE FAILED: ' . $path);
+                return false;
+            }
+        }
+    }
+
+    if (!@rmdir($dir)) {
+        update_log_write('DELETE DIR FAILED: ' . $dir);
+        return false;
+    }
+    return true;
+}
+
 function copy_update_files($source, $target, $root = null, &$stats = null)
 {
     if ($root === null) {
@@ -120,18 +151,24 @@ if (!is_dir(dirname($workdir))) {
     mkdir(dirname($workdir), 0755, true);
 }
 
-if (!is_dir($workdir . DIRECTORY_SEPARATOR . '.git')) {
-    update_log_write('Clone repo: ' . $repo);
+if (is_dir($workdir)) {
+    update_log_write('Remove old update source dir: ' . $workdir);
+    if (!remove_dir_recursive($workdir)) {
+        update_log_write('ERROR: Remove old update source dir failed.');
+        exit(1);
+    }
+}
+
+update_log_write('Clone fresh repo: ' . $repo);
+$code = run_cmd('git clone --depth=1 ' . escapeshellarg($repo) . ' ' . escapeshellarg($workdir));
+if ($code !== 0) {
+    update_log_write('Depth clone failed, try full clone.');
+    if (is_dir($workdir)) {
+        remove_dir_recursive($workdir);
+    }
     $code = run_cmd('git clone ' . escapeshellarg($repo) . ' ' . escapeshellarg($workdir));
     if ($code !== 0) {
         update_log_write('ERROR: Clone failed. Check network, repo URL, and GitHub access.');
-        exit($code);
-    }
-} else {
-    update_log_write('Pull latest code.');
-    $code = run_cmd('git pull origin main', $workdir);
-    if ($code !== 0) {
-        update_log_write('ERROR: Pull failed. Check network, branch, and repo permission.');
         exit($code);
     }
 }
