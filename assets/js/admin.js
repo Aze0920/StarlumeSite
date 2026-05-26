@@ -172,7 +172,13 @@ function fillSettingsForm(settings) {
     var form = document.getElementById('settingsForm');
     if (!form || !settings) return;
     Object.keys(settings).forEach(function (key) {
-        if (form.elements[key]) form.elements[key].value = settings[key];
+        if (!form.elements[key]) return;
+        if (key === 'haozhu_api_password') {
+            form.elements[key].value = '';
+            form.elements[key].placeholder = settings.haozhu_api_password_saved ? '已保存，留空不修改' : '请输入 API 密码';
+            return;
+        }
+        form.elements[key].value = settings[key];
     });
     if (settings.site_name) {
         document.querySelectorAll('[data-setting-display="site_name"]').forEach(function (item) {
@@ -315,7 +321,7 @@ function renderCards(cards) {
         item.innerHTML = '<input class="card-check" type="checkbox" value="' + card.id + '">' +
             '<span class="card-no">' + card.card_no + '</span>' +
             '<span class="card-status">' + card.status_label + '</span>' +
-            '<small>创建：' + card.created_at_text + '</small>';
+            '<small>项目ID：' + (card.project_id || '-') + '　创建：' + card.created_at_text + '</small>';
         list.appendChild(item);
     });
 }
@@ -364,7 +370,12 @@ if (cardCreateForm) {
         var msg = document.getElementById('cardCreateMsg');
         var button = cardCreateForm.querySelector('button[type="submit"]');
         var data = new FormData(cardCreateForm);
+        var projectId = (data.get('project_id') || '').toString().trim();
         var count = parseInt(data.get('count'), 10) || 0;
+        if (!/^\d{1,20}$/.test(projectId)) {
+            setCardMessage(msg, '请输入正确的项目ID，只能是数字。', 'error');
+            return;
+        }
         if (count < 1 || count > 10000) {
             setCardMessage(msg, '制作数量必须在 1 - 10000 之间。', 'error');
             return;
@@ -375,7 +386,7 @@ if (cardCreateForm) {
         }
         setCardMessage(msg, '正在制作卡密，请稍等...');
         try {
-            var result = await postAdmin('create_cards', { count: count });
+            var result = await postAdmin('create_cards', { count: count, project_id: projectId });
             setCardMessage(msg, result.message || '制作完成', result.ok ? 'success' : 'error');
             if (result.ok) loadCards(true);
         } catch (error) {
@@ -385,6 +396,31 @@ if (cardCreateForm) {
                 button.disabled = false;
                 button.textContent = '开始制作';
             }
+        }
+    });
+}
+
+var checkProjectBtn = document.getElementById('checkProjectBtn');
+if (checkProjectBtn) {
+    checkProjectBtn.addEventListener('click', async function () {
+        var msg = document.getElementById('cardCreateMsg');
+        var input = document.getElementById('cardProjectId');
+        var projectId = input ? input.value.trim() : '';
+        if (!/^\d{1,20}$/.test(projectId)) {
+            setCardMessage(msg, '请输入正确的项目ID，只能是数字。', 'error');
+            return;
+        }
+        checkProjectBtn.disabled = true;
+        checkProjectBtn.textContent = '检测中...';
+        setCardMessage(msg, '正在登录豪猪码并测试取号，请稍等...');
+        try {
+            var result = await postAdmin('check_haozhu_project', { project_id: projectId });
+            setCardMessage(msg, result.message || '检测完成', result.ok ? 'success' : 'error');
+        } catch (error) {
+            setCardMessage(msg, '检测失败：' + error.message, 'error');
+        } finally {
+            checkProjectBtn.disabled = false;
+            checkProjectBtn.textContent = '检测项目ID';
         }
     });
 }

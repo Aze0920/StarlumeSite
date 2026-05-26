@@ -1,8 +1,8 @@
 {
-  "version": "1.0.31",
+  "version": "1.0.32",
   "name": "豪猪接码",
   "repo": "https://github.com/Aze0920/StarlumeSite",
   "branch": "main",
   "release_date": "2026-05-27",
-  "description": "小更新：卡密详情筛选条件增加本地缓存，刷新后保留状态勾选、每页数量和搜索关键词。"
+  "description": "小更新：接入豪猪码API配置，制作卡密绑定项目ID并生成HZ-项目ID-XXXX-XXXX-XXXX格式，支持项目ID取号检测。"
 }

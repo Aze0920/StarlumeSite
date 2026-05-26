@@ -8,6 +8,10 @@ function jmweb_default_settings()
         'notice_text' => '不退不换，手机号错误点击取消激活，多兑换几次。',
         'exchange_expire_minutes' => 5,
         'cancel_wait_minutes' => 2,
+        'haozhu_api_hosts' => "api.haozhuma.com\napi.haozhuyun.com",
+        'haozhu_api_account' => '',
+        'haozhu_api_password' => '',
+        'haozhu_release_api' => '',
     );
 }
 
@@ -32,9 +36,33 @@ function jmweb_read_settings()
     return array_merge($defaults, $json);
 }
 
+function jmweb_clean_multiline_hosts($value)
+{
+    $value = str_replace(array("\r\n", "\r", ',', '，', ';', '；', '|'), "\n", (string) $value);
+    $lines = explode("\n", $value);
+    $hosts = array();
+    foreach ($lines as $line) {
+        $line = trim($line);
+        if ($line === '') {
+            continue;
+        }
+        $line = preg_replace('#^https?://#i', '', $line);
+        $line = preg_replace('#/.*$#', '', $line);
+        $line = trim($line);
+        if ($line !== '' && !in_array($line, $hosts, true)) {
+            $hosts[] = $line;
+        }
+    }
+    if (empty($hosts)) {
+        $hosts = array('api.haozhuma.com', 'api.haozhuyun.com');
+    }
+    return implode("\n", $hosts);
+}
+
 function jmweb_clean_settings($input)
 {
     $defaults = jmweb_default_settings();
+    $current = jmweb_read_settings();
     $settings = array();
 
     $settings['site_name'] = isset($input['site_name']) ? trim((string) $input['site_name']) : $defaults['site_name'];
@@ -43,6 +71,13 @@ function jmweb_clean_settings($input)
     $settings['notice_text'] = isset($input['notice_text']) ? trim((string) $input['notice_text']) : $defaults['notice_text'];
     $settings['exchange_expire_minutes'] = isset($input['exchange_expire_minutes']) ? (int) $input['exchange_expire_minutes'] : (int) $defaults['exchange_expire_minutes'];
     $settings['cancel_wait_minutes'] = isset($input['cancel_wait_minutes']) ? (int) $input['cancel_wait_minutes'] : (int) $defaults['cancel_wait_minutes'];
+    $settings['haozhu_api_hosts'] = isset($input['haozhu_api_hosts']) ? jmweb_clean_multiline_hosts($input['haozhu_api_hosts']) : $defaults['haozhu_api_hosts'];
+    $settings['haozhu_api_account'] = isset($input['haozhu_api_account']) ? trim((string) $input['haozhu_api_account']) : $defaults['haozhu_api_account'];
+    $settings['haozhu_api_password'] = isset($input['haozhu_api_password']) ? trim((string) $input['haozhu_api_password']) : '';
+    if ($settings['haozhu_api_password'] === '' && !empty($current['haozhu_api_password'])) {
+        $settings['haozhu_api_password'] = (string) $current['haozhu_api_password'];
+    }
+    $settings['haozhu_release_api'] = isset($input['haozhu_release_api']) ? trim((string) $input['haozhu_release_api']) : (isset($current['haozhu_release_api']) ? (string) $current['haozhu_release_api'] : '');
 
     if ($settings['site_name'] === '') {
         $settings['site_name'] = $defaults['site_name'];
@@ -70,6 +105,18 @@ function jmweb_clean_settings($input)
     }
 
     return $settings;
+}
+
+function jmweb_public_settings($settings)
+{
+    $safe = $settings;
+    if (!empty($safe['haozhu_api_password'])) {
+        $safe['haozhu_api_password'] = '';
+        $safe['haozhu_api_password_saved'] = true;
+    } else {
+        $safe['haozhu_api_password_saved'] = false;
+    }
+    return $safe;
 }
 
 function jmweb_save_settings($settings)

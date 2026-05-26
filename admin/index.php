@@ -93,9 +93,9 @@ $jmwebSettings = jmweb_read_settings();
                     <div>
                         <span class="eyebrow">Card Center</span>
                         <h2>制作卡密</h2>
-                        <p>卡密统一以 <b>HZ-</b> 开头，一次最多制作 10000 张。右侧可查看可用、已用、禁用状态。</p>
+                        <p>卡密格式为 <b>HZ-项目ID-XXXX-XXXX-XXXX</b>，制作前会先检测项目ID是否可以取号。</p>
                     </div>
-                    <div class="settings-badge">HZ- 卡密</div>
+                    <div class="settings-badge">项目ID卡密</div>
                 </div>
                 <div class="cards-workspace">
                     <section class="settings-card card-create-panel">
@@ -104,11 +104,15 @@ $jmwebSettings = jmweb_read_settings();
                             <span>最多 10000 张</span>
                         </div>
                         <form id="cardCreateForm" class="card-create-form">
+                            <label class="setting-field">项目ID
+                                <input name="project_id" id="cardProjectId" inputmode="numeric" placeholder="请输入豪猪码项目ID">
+                            </label>
+                            <button class="btn ghost full" type="button" id="checkProjectBtn">检测项目ID</button>
                             <label class="setting-field">制作数量
                                 <input name="count" type="number" min="1" max="10000" value="10" placeholder="请输入制作数量">
                             </label>
                             <button class="btn primary full" type="submit">开始制作</button>
-                            <div id="cardCreateMsg" class="settings-msg">卡密格式：HZ-XXXX-XXXX-XXXX</div>
+                            <div id="cardCreateMsg" class="settings-msg">卡密格式：HZ-项目ID-XXXX-XXXX-XXXX</div>
                         </form>
                         <div class="card-stats" id="cardStats">
                             <div><strong>0</strong><span>全部</span></div>
@@ -194,6 +198,28 @@ $jmwebSettings = jmweb_read_settings();
                             </label>
                             <label class="setting-field">红色使用提示
                                 <textarea name="notice_text" rows="3" maxlength="300"><?= htmlspecialchars($jmwebSettings['notice_text'], ENT_QUOTES, 'UTF-8') ?></textarea>
+                            </label>
+                        </div>
+                    </div>
+                    <div class="settings-card">
+                        <div class="settings-card-head">
+                            <strong>豪猪码 API 配置</strong>
+                            <span>用于检测项目ID和后续真实取号</span>
+                        </div>
+                        <div class="settings-grid two">
+                            <label class="setting-field">API 账号
+                                <input name="haozhu_api_account" value="<?= htmlspecialchars($jmwebSettings['haozhu_api_account'], ENT_QUOTES, 'UTF-8') ?>" maxlength="160" placeholder="请输入 API 账号">
+                            </label>
+                            <label class="setting-field">API 密码
+                                <input name="haozhu_api_password" type="password" value="" maxlength="160" placeholder="<?= !empty($jmwebSettings['haozhu_api_password']) ? '已保存，留空不修改' : '请输入 API 密码' ?>" autocomplete="new-password">
+                            </label>
+                        </div>
+                        <div class="settings-grid">
+                            <label class="setting-field">API 地址，一行一个
+                                <textarea name="haozhu_api_hosts" rows="3" maxlength="500" placeholder="api.haozhuma.com&#10;api.haozhuyun.com"><?= htmlspecialchars($jmwebSettings['haozhu_api_hosts'], ENT_QUOTES, 'UTF-8') ?></textarea>
+                            </label>
+                            <label class="setting-field">释放接口 api 参数，暂未填写官方接口时留空
+                                <input name="haozhu_release_api" value="<?= htmlspecialchars($jmwebSettings['haozhu_release_api'], ENT_QUOTES, 'UTF-8') ?>" maxlength="60" placeholder="例如 releasePhone，确认官方文档后填写">
                             </label>
                         </div>
                     </div>

@@ -193,9 +193,111 @@ try {
         return $text;
     }
 
-    function jmweb_generate_card_no()
+    function jmweb_generate_card_no($projectId)
     {
-        return 'HZ-' . jmweb_random_card_part(4) . '-' . jmweb_random_card_part(4) . '-' . jmweb_random_card_part(4);
+        return 'HZ-' . $projectId . '-' . jmweb_random_card_part(4) . '-' . jmweb_random_card_part(4) . '-' . jmweb_random_card_part(4);
+    }
+
+    function jmweb_clean_project_id($projectId)
+    {
+        $projectId = trim((string) $projectId);
+        return preg_match('/^[0-9]{1,20}$/', $projectId) ? $projectId : '';
+    }
+
+    function jmweb_haozhu_hosts($settings)
+    {
+        $raw = isset($settings['haozhu_api_hosts']) ? (string) $settings['haozhu_api_hosts'] : '';
+        $raw = str_replace(array("\r\n", "\r", ',', '，', ';', '；', '|'), "\n", $raw);
+        $hosts = array();
+        foreach (explode("\n", $raw) as $host) {
+            $host = trim($host);
+            if ($host === '') {
+                continue;
+            }
+            $host = preg_replace('#^https?://#i', '', $host);
+            $host = preg_replace('#/.*$#', '', $host);
+            if ($host !== '' && !in_array($host, $hosts, true)) {
+                $hosts[] = $host;
+            }
+        }
+        return empty($hosts) ? array('api.haozhuma.com', 'api.haozhuyun.com') : $hosts;
+    }
+
+    function jmweb_haozhu_url($host, $params)
+    {
+        return 'https://' . $host . '/sms/?' . http_build_query($params);
+    }
+
+    function jmweb_haozhu_json_request($host, $params)
+    {
+        $url = jmweb_haozhu_url($host, $params);
+        $raw = jmweb_fetch_url($url);
+        $json = $raw !== false ? json_decode($raw, true) : null;
+        return array($url, $raw, is_array($json) ? $json : array());
+    }
+
+    function jmweb_haozhu_login($settings)
+    {
+        $account = isset($settings['haozhu_api_account']) ? trim((string) $settings['haozhu_api_account']) : '';
+        $password = isset($settings['haozhu_api_password']) ? trim((string) $settings['haozhu_api_password']) : '';
+        if ($account === '' || $password === '') {
+            return array('ok' => false, 'message' => '请先在基本设置填写豪猪码 API 账号和密码。');
+        }
+
+        $lastMessage = '';
+        foreach (jmweb_haozhu_hosts($settings) as $host) {
+            list($url, $raw, $json) = jmweb_haozhu_json_request($host, array(
+                'api' => 'login',
+                'user' => $account,
+                'pass' => $password,
+            ));
+            if (isset($json['code']) && (string) $json['code'] === '0' && !empty($json['token'])) {
+                return array('ok' => true, 'token' => (string) $json['token'], 'host' => $host, 'message' => '登录成功');
+            }
+            $lastMessage = isset($json['msg']) ? (string) $json['msg'] : ($raw ? (string) $raw : '接口无响应');
+        }
+        return array('ok' => false, 'message' => '豪猪码登录失败：' . $lastMessage);
+    }
+
+    function jmweb_haozhu_release_phone($settings, $host, $token, $projectId, $phone)
+    {
+        $releaseApi = isset($settings['haozhu_release_api']) ? trim((string) $settings['haozhu_release_api']) : '';
+        if ($releaseApi === '' || $phone === '') {
+            return array('ok' => true, 'skipped' => true, 'message' => '未配置释放接口，已跳过释放。');
+        }
+        list($url, $raw, $json) = jmweb_haozhu_json_request($host, array(
+            'api' => $releaseApi,
+            'token' => $token,
+            'sid' => $projectId,
+            'phone' => $phone,
+        ));
+        $ok = isset($json['code']) && (string) $json['code'] === '0';
+        return array('ok' => $ok, 'skipped' => false, 'message' => $ok ? '释放请求已执行。' : ('释放接口返回：' . (isset($json['msg']) ? $json['msg'] : $raw)));
+    }
+
+    function jmweb_haozhu_check_project($projectId)
+    {
+        $settings = jmweb_read_settings();
+        $login = jmweb_haozhu_login($settings);
+        if (empty($login['ok'])) {
+            return $login;
+        }
+        list($url, $raw, $json) = jmweb_haozhu_json_request($login['host'], array(
+            'api' => 'getPhone',
+            'token' => $login['token'],
+            'sid' => $projectId,
+        ));
+        if (!isset($json['code']) || (string) $json['code'] !== '0' || empty($json['phone'])) {
+            return array('ok' => false, 'message' => '项目ID检测失败：' . (isset($json['msg']) ? $json['msg'] : ($raw ? $raw : '取号接口无响应')), 'host' => $login['host']);
+        }
+        $release = jmweb_haozhu_release_phone($settings, $login['host'], $login['token'], $projectId, (string) $json['phone']);
+        return array(
+            'ok' => true,
+            'message' => '项目ID可用，测试取到手机号 ' . $json['phone'] . '。' . (empty($release['skipped']) ? $release['message'] : ' 未配置释放接口，未执行释放。'),
+            'host' => $login['host'],
+            'phone' => (string) $json['phone'],
+            'release' => $release,
+        );
     }
 
     function jmweb_card_allowed_limit($limit)
@@ -280,8 +382,8 @@ try {
         jmweb_require_admin();
         jmweb_api_json(array(
             'ok' => true,
-            'settings' => jmweb_read_settings(),
-            'defaults' => jmweb_default_settings(),
+            'settings' => jmweb_public_settings(jmweb_read_settings()),
+            'defaults' => jmweb_public_settings(jmweb_default_settings()),
         ));
     }
 
@@ -292,7 +394,7 @@ try {
             jmweb_api_json(array('ok' => false, 'message' => '保存失败，请检查 data 目录写入权限。'));
         }
         jmweb_log('管理员保存基本设置');
-        jmweb_api_json(array('ok' => true, 'message' => '基本设置已保存。', 'settings' => $settings));
+        jmweb_api_json(array('ok' => true, 'message' => '基本设置已保存。', 'settings' => jmweb_public_settings($settings)));
     }
 
     if ($action === 'reset_settings') {
@@ -302,11 +404,26 @@ try {
             jmweb_api_json(array('ok' => false, 'message' => '恢复失败，请检查 data 目录写入权限。'));
         }
         jmweb_log('管理员恢复默认基本设置');
-        jmweb_api_json(array('ok' => true, 'message' => '已恢复默认设置。', 'settings' => $settings));
+        jmweb_api_json(array('ok' => true, 'message' => '已恢复默认设置。', 'settings' => jmweb_public_settings($settings)));
+    }
+
+    if ($action === 'check_haozhu_project') {
+        jmweb_require_admin();
+        $projectId = jmweb_clean_project_id(isset($_POST['project_id']) ? $_POST['project_id'] : '');
+        if ($projectId === '') {
+            jmweb_api_json(array('ok' => false, 'message' => '请输入正确的项目ID，只能是数字。'));
+        }
+        $check = jmweb_haozhu_check_project($projectId);
+        jmweb_log('检测豪猪码项目ID：' . $projectId . '，结果：' . (!empty($check['ok']) ? 'ok' : 'fail'));
+        jmweb_api_json(array_merge(array('project_id' => $projectId), $check));
     }
 
     if ($action === 'create_cards') {
         jmweb_require_admin();
+        $projectId = jmweb_clean_project_id(isset($_POST['project_id']) ? $_POST['project_id'] : '');
+        if ($projectId === '') {
+            jmweb_api_json(array('ok' => false, 'message' => '请输入正确的项目ID，只能是数字。'));
+        }
         $count = isset($_POST['count']) ? (int) $_POST['count'] : 0;
         if ($count < 1) {
             jmweb_api_json(array('ok' => false, 'message' => '生成数量不能小于 1。'));
@@ -315,16 +432,21 @@ try {
             jmweb_api_json(array('ok' => false, 'message' => '一次最多只能制作 10000 张卡密。'));
         }
 
+        $projectCheck = jmweb_haozhu_check_project($projectId);
+        if (empty($projectCheck['ok'])) {
+            jmweb_api_json(array('ok' => false, 'message' => $projectCheck['message']));
+        }
+
         $pdo = jmweb_ensure_cards_table();
-        $insert = $pdo->prepare('INSERT IGNORE INTO jm_cards (card_no, status, created_at, updated_at) VALUES (?, ?, ?, ?)');
+        $insert = $pdo->prepare('INSERT IGNORE INTO jm_cards (card_no, project_id, status, created_at, updated_at) VALUES (?, ?, ?, ?, ?)');
         $created = 0;
         $cards = array();
         $now = time();
         $tries = 0;
         while ($created < $count && $tries < ($count * 8 + 80)) {
             $tries++;
-            $cardNo = jmweb_generate_card_no();
-            $insert->execute(array($cardNo, 'available', $now, $now));
+            $cardNo = jmweb_generate_card_no($projectId);
+            $insert->execute(array($cardNo, $projectId, 'available', $now, $now));
             if ($insert->rowCount() > 0) {
                 $created++;
                 if (count($cards) < 100) {
@@ -333,7 +455,7 @@ try {
             }
         }
 
-        jmweb_log('管理员制作卡密数量：' . $created);
+        jmweb_log('管理员制作卡密项目ID：' . $projectId . '，数量：' . $created);
         jmweb_api_json(array(
             'ok' => $created === $count,
             'message' => $created === $count ? '已成功制作 ' . $created . ' 张卡密。' : '只成功制作 ' . $created . ' 张卡密，请重试。',
@@ -356,7 +478,8 @@ try {
         $where = array();
         $params = array();
         if ($keyword !== '') {
-            $where[] = 'card_no LIKE ?';
+            $where[] = '(card_no LIKE ? OR project_id LIKE ?)';
+            $params[] = '%' . $keyword . '%';
             $params[] = '%' . $keyword . '%';
         }
         if (!empty($statuses)) {
@@ -377,7 +500,7 @@ try {
         }
         $offset = ($page - 1) * $limit;
 
-        $listSql = 'SELECT id, card_no, status, used_at, disabled_at, created_at, updated_at FROM jm_cards' . $whereSql . ' ORDER BY id DESC LIMIT ' . (int) $limit . ' OFFSET ' . (int) $offset;
+        $listSql = 'SELECT id, card_no, project_id, status, phone, provider_uid, provider_sid, used_at, disabled_at, created_at, updated_at FROM jm_cards' . $whereSql . ' ORDER BY id DESC LIMIT ' . (int) $limit . ' OFFSET ' . (int) $offset;
         $listStmt = $pdo->prepare($listSql);
         $listStmt->execute($params);
 
