@@ -364,6 +364,7 @@ function bindCardDragSelect(list) {
     list.setAttribute('data-drag-bound', '1');
     var dragging = false;
     var dragValue = true;
+    var suppressClick = false;
     function setItemChecked(target) {
         var item = target && target.closest ? target.closest('.card-item') : null;
         if (!item || !list.contains(item)) return;
@@ -378,6 +379,7 @@ function bindCardDragSelect(list) {
         var checkbox = item.querySelector('.card-check');
         if (!checkbox) return;
         dragging = true;
+        suppressClick = true;
         dragValue = !checkbox.checked;
         setItemChecked(item);
         event.preventDefault();
@@ -386,6 +388,12 @@ function bindCardDragSelect(list) {
         if (!dragging) return;
         setItemChecked(event.target);
     });
+    list.addEventListener('click', function (event) {
+        if (!suppressClick) return;
+        event.preventDefault();
+        event.stopPropagation();
+        suppressClick = false;
+    }, true);
     document.addEventListener('mouseup', function () {
         dragging = false;
     });

@@ -1,8 +1,8 @@
 {
-  "version": "1.0.36",
+  "version": "1.0.37",
   "name": "豪猪接码",
   "repo": "https://github.com/Aze0920/StarlumeSite",
   "branch": "main",
   "release_date": "2026-05-27",
-  "description": "紧急修复：恢复 public/admin 与 public/api 入口为跳转壳文件，避免 public 目录下错误引用 config 导致后台打不开。"
+  "description": "小更新：优化后台卡密选择逻辑，单击卡密行即可选择或取消，拖动选择保持连续选择体验。"
 }
