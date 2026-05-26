@@ -68,6 +68,56 @@ function remove_dir_recursive($dir)
     return true;
 }
 
+function restore_install_files($site, $backupDir)
+{
+    $files = array(
+        'config/database.php',
+        'data/install.lock',
+    );
+    foreach ($files as $file) {
+        $backup = $backupDir . DIRECTORY_SEPARATOR . str_replace('/', DIRECTORY_SEPARATOR, $file);
+        $target = $site . DIRECTORY_SEPARATOR . str_replace('/', DIRECTORY_SEPARATOR, $file);
+        if (!is_file($backup)) {
+            continue;
+        }
+        $targetDir = dirname($target);
+        if (!is_dir($targetDir)) {
+            mkdir($targetDir, 0755, true);
+        }
+        if (copy($backup, $target)) {
+            update_log_write('RESTORE INSTALL FILE: ' . $file);
+        } else {
+            update_log_write('RESTORE INSTALL FILE FAILED: ' . $file);
+        }
+    }
+}
+
+function backup_install_files($site)
+{
+    $backupDir = $site . DIRECTORY_SEPARATOR . 'data' . DIRECTORY_SEPARATOR . 'update-backup-' . date('YmdHis');
+    $files = array(
+        'config/database.php',
+        'data/install.lock',
+    );
+    foreach ($files as $file) {
+        $source = $site . DIRECTORY_SEPARATOR . str_replace('/', DIRECTORY_SEPARATOR, $file);
+        if (!is_file($source)) {
+            continue;
+        }
+        $target = $backupDir . DIRECTORY_SEPARATOR . str_replace('/', DIRECTORY_SEPARATOR, $file);
+        $targetDir = dirname($target);
+        if (!is_dir($targetDir)) {
+            mkdir($targetDir, 0755, true);
+        }
+        if (copy($source, $target)) {
+            update_log_write('BACKUP INSTALL FILE: ' . $file);
+        } else {
+            update_log_write('BACKUP INSTALL FILE FAILED: ' . $file);
+        }
+    }
+    return $backupDir;
+}
+
 function copy_update_files($source, $target, $root = null, &$stats = null)
 {
     if ($root === null) {
@@ -77,7 +127,10 @@ function copy_update_files($source, $target, $root = null, &$stats = null)
         $stats = array('updated' => 0, 'skipped' => 0, 'failed' => 0);
     }
 
-    $skip = array('.git', 'data', 'logs');
+    $skipDirs = array('.git', 'logs');
+    $skipRelativeDirs = array(
+        'data/update-source',
+    );
     $protectedFiles = array(
         'config/database.php',
         'data/install.lock',
@@ -95,11 +148,14 @@ function copy_update_files($source, $target, $root = null, &$stats = null)
     foreach ($items as $item) {
         $from = $source . DIRECTORY_SEPARATOR . $item;
         $to = $target . DIRECTORY_SEPARATOR . $item;
-        if ($item === '.' || $item === '..' || in_array($item, $skip, true)) {
+        if ($item === '.' || $item === '..' || in_array($item, $skipDirs, true)) {
             continue;
         }
 
         $relative = ltrim(str_replace(array($root, '\\'), array('', '/'), $from), '/');
+        if (is_dir($from) && in_array($relative, $skipRelativeDirs, true)) {
+            continue;
+        }
         if (in_array($relative, $protectedFiles, true)) {
             update_log_write('SKIP PROTECTED FILE: ' . $relative);
             $stats['skipped']++;
@@ -164,6 +220,7 @@ if ($gitCheck !== 0) {
 $workdir = JMWEB_UPDATE_WORKDIR;
 $repo = JMWEB_UPDATE_REPO;
 $site = JMWEB_SITE_DIR;
+$installBackupDir = backup_install_files($site);
 
 if (!is_dir(dirname($workdir))) {
     mkdir(dirname($workdir), 0755, true);
@@ -208,6 +265,7 @@ if (!is_dir($workdir . DIRECTORY_SEPARATOR . '.git')) {
 update_log_write('Compare file size and copy changed files to site dir.');
 $copyStats = array('updated' => 0, 'skipped' => 0, 'failed' => 0);
 copy_update_files($workdir, $site, $workdir, $copyStats);
+restore_install_files($site, $installBackupDir);
 update_log_write('Copy summary: updated ' . $copyStats['updated'] . ' file(s), skipped ' . $copyStats['skipped'] . ' unchanged file(s), failed ' . $copyStats['failed'] . ' file(s).');
 if ($copyStats['failed'] > 0) {
     update_log_write('ERROR: Some files failed to copy.');
