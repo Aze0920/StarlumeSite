@@ -1,8 +1,8 @@
 {
-  "version": "1.0.28",
+  "version": "1.0.29",
   "name": "豪猪接码",
   "repo": "https://github.com/Aze0920/StarlumeSite",
   "branch": "main",
   "release_date": "2026-05-26",
-  "description": "小更新：修复后台站点名实时同步，移除时间规则设置，版本号可点击进入系统更新。"
+  "description": "小更新：优化后台侧边栏底部菜单，贴近浏览器底部且小窗口不遮挡上方列表。"
 }
