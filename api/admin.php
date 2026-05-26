@@ -1,9 +1,67 @@
 <?php
 error_reporting(0);
 ini_set('display_errors', 0);
+ob_start();
 
 require_once dirname(__DIR__) . '/config/app.php';
 require_once dirname(__DIR__) . '/config/database_helper.php';
+
+function jmweb_api_log_path()
+{
+    return dirname(__DIR__) . DIRECTORY_SEPARATOR . 'data' . DIRECTORY_SEPARATOR . 'update.log';
+}
+
+function jmweb_read_update_log()
+{
+    $file = jmweb_api_log_path();
+    if (!is_file($file)) {
+        return '';
+    }
+    $content = file_get_contents($file);
+    if (strlen($content) > 20000) {
+        return substr($content, -20000);
+    }
+    return $content;
+}
+
+function jmweb_write_update_log($message)
+{
+    $file = jmweb_api_log_path();
+    $dir = dirname($file);
+    if (!is_dir($dir)) {
+        mkdir($dir, 0755, true);
+    }
+    file_put_contents($file, '[' . date('Y-m-d H:i:s') . '] ' . $message . PHP_EOL, FILE_APPEND);
+}
+
+function jmweb_api_json($data)
+{
+    $buffer = ob_get_clean();
+    if ($buffer) {
+        $data['php_output'] = $buffer;
+        if (empty($data['output'])) {
+            $data['output'] = $buffer;
+        }
+    }
+    jmweb_json($data);
+}
+
+register_shutdown_function(function () {
+    $error = error_get_last();
+    if ($error && in_array($error['type'], array(E_ERROR, E_PARSE, E_CORE_ERROR, E_COMPILE_ERROR))) {
+        while (ob_get_level() > 0) {
+            ob_end_clean();
+        }
+        header('Content-Type: application/json; charset=utf-8');
+        echo json_encode(array(
+            'ok' => false,
+            'message' => 'PHP 致命错误：' . $error['message'],
+            'output' => '文件：' . $error['file'] . "\n行号：" . $error['line'] . "\n错误：" . $error['message'],
+            'log_path' => 'data/update.log',
+            'log' => jmweb_read_update_log(),
+        ), JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT);
+    }
+});
 
 set_error_handler(function ($severity, $message, $file, $line) {
     throw new ErrorException($message, 0, $severity, $file, $line);
@@ -52,14 +110,14 @@ try {
             $_SESSION['jmweb_admin'] = true;
             $_SESSION['jmweb_admin_user'] = $username;
             jmweb_log('管理员登录成功：' . $username);
-            jmweb_json(array('ok' => true, 'message' => '登录成功'));
+            jmweb_api_json(array('ok' => true, 'message' => '登录成功'));
         }
-        jmweb_json(array('ok' => false, 'message' => '账号或密码错误'));
+        jmweb_api_json(array('ok' => false, 'message' => '账号或密码错误'));
     }
 
     if ($action === 'logout') {
         unset($_SESSION['jmweb_admin']);
-        jmweb_json(array('ok' => true, 'message' => '已退出登录'));
+        jmweb_api_json(array('ok' => true, 'message' => '已退出登录'));
     }
 
     if ($action === 'check_update') {
@@ -67,25 +125,27 @@ try {
 
         $raw = jmweb_fetch_url(JMWEB_UPDATE_INFO_URL . '?t=' . time());
         if ($raw === false || trim($raw) === '') {
-            jmweb_json(array(
+            jmweb_api_json(array(
                 'ok' => false,
                 'message' => '检查失败：无法读取远程版本信息，请确认服务器能访问 GitHub。',
                 'current_version' => JMWEB_VERSION,
+                'output' => '远程版本地址：' . JMWEB_UPDATE_INFO_URL,
             ));
         }
 
         $remote = json_decode($raw, true);
         if (!is_array($remote) || empty($remote['version'])) {
-            jmweb_json(array(
+            jmweb_api_json(array(
                 'ok' => false,
                 'message' => '检查失败：远程版本信息格式不正确。',
                 'current_version' => JMWEB_VERSION,
+                'output' => $raw,
             ));
         }
 
         $remoteVersion = (string) $remote['version'];
         $hasUpdate = version_compare($remoteVersion, JMWEB_VERSION, '>');
-        jmweb_json(array(
+        jmweb_api_json(array(
             'ok' => true,
             'has_update' => $hasUpdate,
             'message' => $hasUpdate ? '发现新版本，可以更新。' : '当前已经是最新版本。',
@@ -101,25 +161,67 @@ try {
         jmweb_require_admin();
 
         $script = dirname(__DIR__) . DIRECTORY_SEPARATOR . 'update.php';
+        $logPath = jmweb_api_log_path();
+        file_put_contents($logPath, '');
+        jmweb_write_update_log('Start update request.');
+        jmweb_write_update_log('Current version: ' . JMWEB_VERSION);
+        jmweb_write_update_log('Repo: ' . JMWEB_UPDATE_REPO);
+        jmweb_write_update_log('Script: ' . $script);
+
         if (!is_file($script)) {
-            jmweb_json(array('ok' => false, 'message' => '更新脚本不存在'));
+            jmweb_write_update_log('Update script not found.');
+            jmweb_api_json(array(
+                'ok' => false,
+                'message' => '更新脚本不存在',
+                'output' => jmweb_read_update_log(),
+                'log_path' => 'data/update.log',
+                'log' => jmweb_read_update_log(),
+            ));
         }
 
-        $cmd = PHP_BINARY . ' ' . escapeshellarg($script) . ' 2>&1';
+        if (!function_exists('exec')) {
+            jmweb_write_update_log('PHP exec function is disabled.');
+            jmweb_api_json(array(
+                'ok' => false,
+                'message' => '更新失败：服务器禁用了 exec 函数，无法在后台执行 Git 更新。',
+                'output' => jmweb_read_update_log(),
+                'log_path' => 'data/update.log',
+                'log' => jmweb_read_update_log(),
+            ));
+        }
+
+        $php = defined('PHP_BINARY') && PHP_BINARY ? PHP_BINARY : 'php';
+        $cmd = escapeshellarg($php) . ' ' . escapeshellarg($script) . ' 2>&1';
+        jmweb_write_update_log('Command: ' . $cmd);
+
         $output = array();
         $code = 0;
         exec($cmd, $output, $code);
+        foreach ($output as $line) {
+            jmweb_write_update_log($line);
+        }
+        jmweb_write_update_log('Exit code: ' . $code);
 
+        $log = jmweb_read_update_log();
         jmweb_log('执行一键更新，退出码：' . $code);
-        jmweb_json(array(
+        jmweb_api_json(array(
             'ok' => $code === 0,
-            'message' => $code === 0 ? '更新完成' : '更新失败，请查看输出',
-            'output' => implode("\n", $output),
+            'message' => $code === 0 ? '更新完成' : '更新失败，请查看日志',
+            'output' => $log,
+            'log_path' => 'data/update.log',
+            'log' => $log,
         ));
     }
 
-    jmweb_json(array('ok' => false, 'message' => '未知操作'));
+    jmweb_api_json(array('ok' => false, 'message' => '未知操作'));
 } catch (Exception $e) {
     jmweb_log('接口错误：' . $e->getMessage());
-    jmweb_json(array('ok' => false, 'message' => '服务器错误：' . $e->getMessage()));
+    jmweb_write_update_log('API error: ' . $e->getMessage());
+    jmweb_api_json(array(
+        'ok' => false,
+        'message' => '服务器错误：' . $e->getMessage(),
+        'output' => jmweb_read_update_log(),
+        'log_path' => 'data/update.log',
+        'log' => jmweb_read_update_log(),
+    ));
 }

@@ -1,8 +1,8 @@
 {
-  "version": "1.0.2",
+  "version": "1.0.4",
   "name": "星澜云站",
   "repo": "https://github.com/Aze0920/StarlumeSite",
   "branch": "main",
   "release_date": "2026-05-26",
-  "description": "小更新：前台改为兑换码验证台，新增兑换码输入、手机号状态、验证码、到期时间、刷新状态和取消激活占位界面。"
+  "description": "小更新：优化前台兑换码验证台 UI，提升卡片、输入框、状态面板和移动端视觉效果。"
 }

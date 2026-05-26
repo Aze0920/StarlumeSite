@@ -15,6 +15,7 @@ async function postAdmin(action, payload) {
         return {
             ok: false,
             message: preview ? '服务器返回的不是 JSON：' + preview : '服务器返回为空，请检查 PHP 错误日志。',
+            output: text || '',
         };
     }
 }
@@ -135,7 +136,13 @@ if (updateBtn) {
         setText(updateOutput, '正在执行更新，请稍等...');
         try {
             var result = await postAdmin('update');
-            setText(updateOutput, ((result.message || '') + '\n\n' + (result.output || '')).trim());
+            var updateLines = [];
+            updateLines.push(result.message || '更新请求完成');
+            if (result.log_path) updateLines.push('日志文件：' + result.log_path);
+            if (result.output) updateLines.push('\n' + result.output);
+            else if (result.log) updateLines.push('\n' + result.log);
+            else if (result.php_output) updateLines.push('\nPHP 输出：\n' + result.php_output);
+            setText(updateOutput, updateLines.join('\n'));
         } catch (error) {
             setText(updateOutput, '请求失败：' + error.message);
         } finally {

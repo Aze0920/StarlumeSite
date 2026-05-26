@@ -3,9 +3,18 @@ require_once __DIR__ . '/config/app.php';
 
 set_time_limit(300);
 
-function line_out($message)
+$updateLogFile = __DIR__ . DIRECTORY_SEPARATOR . 'data' . DIRECTORY_SEPARATOR . 'update.log';
+
+function update_log_write($message)
 {
-    echo '[' . date('H:i:s') . '] ' . $message . PHP_EOL;
+    global $updateLogFile;
+    $dir = dirname($updateLogFile);
+    if (!is_dir($dir)) {
+        mkdir($dir, 0755, true);
+    }
+    $line = '[' . date('Y-m-d H:i:s') . '] ' . $message;
+    file_put_contents($updateLogFile, $line . PHP_EOL, FILE_APPEND);
+    echo $line . PHP_EOL;
 }
 
 function run_cmd($cmd, $cwd = null)
@@ -16,7 +25,15 @@ function run_cmd($cmd, $cwd = null)
             ? 'cd /d ' . escapeshellarg($cwd) . ' && '
             : 'cd ' . escapeshellarg($cwd) . ' && ';
     }
-    passthru($prefix . $cmd, $code);
+    $fullCmd = $prefix . $cmd;
+    update_log_write('RUN: ' . $fullCmd);
+    $output = array();
+    $code = 0;
+    exec($fullCmd . ' 2>&1', $output, $code);
+    foreach ($output as $line) {
+        update_log_write($line);
+    }
+    update_log_write('COMMAND EXIT: ' . $code);
     return (int) $code;
 }
 
@@ -44,15 +61,27 @@ function copy_update_files($source, $target)
             }
             copy_update_files($from, $to);
         } else {
-            copy($from, $to);
+            if (!copy($from, $to)) {
+                update_log_write('COPY FAILED: ' . $from . ' -> ' . $to);
+            }
         }
     }
 }
 
-line_out('开始更新 ' . JMWEB_NAME);
+update_log_write('Start update ' . JMWEB_NAME);
+update_log_write('PHP binary: ' . (defined('PHP_BINARY') ? PHP_BINARY : 'unknown'));
+update_log_write('Site dir: ' . JMWEB_SITE_DIR);
+update_log_write('Work dir: ' . JMWEB_UPDATE_WORKDIR);
+update_log_write('Repo: ' . JMWEB_UPDATE_REPO);
 
 if (!function_exists('exec')) {
-    line_out('服务器禁用了 exec，无法自动拉取 GitHub。');
+    update_log_write('ERROR: PHP exec is disabled.');
+    exit(1);
+}
+
+$gitCheck = run_cmd('git --version');
+if ($gitCheck !== 0) {
+    update_log_write('ERROR: Git command not found. Please install Git on server or enable git command path.');
     exit(1);
 }
 
@@ -65,21 +94,21 @@ if (!is_dir(dirname($workdir))) {
 }
 
 if (!is_dir($workdir . DIRECTORY_SEPARATOR . '.git')) {
-    line_out('首次克隆仓库：' . $repo);
+    update_log_write('Clone repo: ' . $repo);
     $code = run_cmd('git clone ' . escapeshellarg($repo) . ' ' . escapeshellarg($workdir));
     if ($code !== 0) {
-        line_out('克隆失败，请确认宝塔服务器已安装 Git，且仓库地址正确。');
+        update_log_write('ERROR: Clone failed. Check network, repo URL, and GitHub access.');
         exit($code);
     }
 } else {
-    line_out('拉取最新代码');
+    update_log_write('Pull latest code.');
     $code = run_cmd('git pull origin main', $workdir);
     if ($code !== 0) {
-        line_out('拉取失败，请检查网络、分支和仓库权限。');
+        update_log_write('ERROR: Pull failed. Check network, branch, and repo permission.');
         exit($code);
     }
 }
 
-line_out('同步文件到网站目录');
+update_log_write('Copy files to site dir.');
 copy_update_files($workdir, $site);
-line_out('更新完成');
+update_log_write('Update done.');
