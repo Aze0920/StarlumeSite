@@ -1,103 +1,146 @@
-async function postAdmin(action, payload = {}) {
-    const form = new FormData();
+async function postAdmin(action, payload) {
+    payload = payload || {};
+    var form = new FormData();
     form.append('action', action);
-    Object.entries(payload).forEach(([key, value]) => form.append(key, value));
-    const response = await fetch('../api/admin.php', { method: 'POST', body: form });
-    const text = await response.text();
+    Object.keys(payload).forEach(function (key) {
+        form.append(key, payload[key]);
+    });
+
+    var response = await fetch('../api/admin.php', { method: 'POST', body: form, credentials: 'same-origin' });
+    var text = await response.text();
     try {
         return JSON.parse(text);
     } catch (error) {
-        const preview = text.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 260);
+        var preview = text.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 260);
         return {
             ok: false,
-            message: preview ? `服务器返回的不是 JSON：${preview}` : '服务器返回为空，请检查 PHP 错误日志。',
+            message: preview ? '服务器返回的不是 JSON：' + preview : '服务器返回为空，请检查 PHP 错误日志。',
         };
     }
 }
 
-const loginForm = document.getElementById('loginForm');
+function setText(el, text) {
+    if (el) el.textContent = text;
+}
+
+function showAdminPage(pageName, saveHash) {
+    var target = document.getElementById('page-' + pageName);
+    if (!target) pageName = 'dashboard';
+
+    document.querySelectorAll('.side-link[data-page]').forEach(function (item) {
+        item.classList.toggle('active', item.getAttribute('data-page') === pageName);
+    });
+    document.querySelectorAll('.admin-page').forEach(function (page) {
+        page.classList.add('hidden');
+    });
+
+    target = document.getElementById('page-' + pageName);
+    if (target) target.classList.remove('hidden');
+
+    if (saveHash !== false) {
+        window.location.hash = pageName;
+        try { localStorage.setItem('jmweb_admin_page', pageName); } catch (e) {}
+    }
+}
+
+function initAdminPageFromHash() {
+    var pageName = window.location.hash ? window.location.hash.replace('#', '') : '';
+    if (!pageName) {
+        try { pageName = localStorage.getItem('jmweb_admin_page') || ''; } catch (e) { pageName = ''; }
+    }
+    showAdminPage(pageName || 'dashboard', false);
+}
+
+var loginForm = document.getElementById('loginForm');
 if (loginForm) {
-    loginForm.addEventListener('submit', async (event) => {
+    loginForm.addEventListener('submit', async function (event) {
         event.preventDefault();
-        const msg = document.getElementById('loginMsg');
-        msg.className = 'form-msg';
-        msg.textContent = '正在登录...';
-        const data = new FormData(loginForm);
-        const result = await postAdmin('login', {
+        var msg = document.getElementById('loginMsg');
+        if (msg) msg.className = 'form-msg';
+        setText(msg, '正在登录...');
+        var data = new FormData(loginForm);
+        var result = await postAdmin('login', {
             username: data.get('username') || '',
             password: data.get('password') || '',
         });
-        msg.textContent = result.message || '登录失败';
+        setText(msg, result.message || '登录失败');
         if (result.ok) {
             window.location.reload();
-        } else {
+        } else if (msg) {
             msg.className = 'form-msg error';
         }
     });
 }
 
-document.querySelectorAll('.side-link[data-page]').forEach((button) => {
-    button.addEventListener('click', () => {
-        document.querySelectorAll('.side-link[data-page]').forEach((item) => item.classList.remove('active'));
-        button.classList.add('active');
-        document.querySelectorAll('.admin-page').forEach((page) => page.classList.add('hidden'));
-        document.getElementById(`page-${button.dataset.page}`)?.classList.remove('hidden');
+document.querySelectorAll('.side-link[data-page]').forEach(function (button) {
+    button.addEventListener('click', function () {
+        showAdminPage(button.getAttribute('data-page') || 'dashboard', true);
     });
 });
 
-const logoutBtn = document.getElementById('logoutBtn');
+window.addEventListener('hashchange', function () {
+    initAdminPageFromHash();
+});
+initAdminPageFromHash();
+
+var logoutBtn = document.getElementById('logoutBtn');
 if (logoutBtn) {
-    logoutBtn.addEventListener('click', async () => {
+    logoutBtn.addEventListener('click', async function () {
         await postAdmin('logout');
-        window.location.reload();
+        try { localStorage.removeItem('jmweb_admin_page'); } catch (e) {}
+        window.location.href = '../admin/';
     });
 }
 
-const checkUpdateBtn = document.getElementById('checkUpdateBtn');
-const updateBtn = document.getElementById('updateBtn');
-const updateOutput = document.getElementById('updateOutput');
-const remoteVersion = document.getElementById('remoteVersion');
+var checkUpdateBtn = document.getElementById('checkUpdateBtn');
+var updateBtn = document.getElementById('updateBtn');
+var updateOutput = document.getElementById('updateOutput');
+var remoteVersion = document.getElementById('remoteVersion');
 
 if (checkUpdateBtn) {
-    checkUpdateBtn.addEventListener('click', async () => {
+    checkUpdateBtn.addEventListener('click', async function () {
         checkUpdateBtn.disabled = true;
-        updateBtn?.classList.add('hidden');
-        if (updateOutput) updateOutput.textContent = '正在检查远程版本，请稍等...';
+        checkUpdateBtn.textContent = '检查中...';
+        if (updateBtn) updateBtn.classList.add('hidden');
+        setText(updateOutput, '正在检查远程版本，请稍等...');
         try {
-            const result = await postAdmin('check_update');
-            if (remoteVersion) {
-                remoteVersion.textContent = result.remote_version ? `v${result.remote_version}` : '检查失败';
-            }
-            const lines = [
+            var result = await postAdmin('check_update');
+            setText(remoteVersion, result.remote_version ? 'v' + result.remote_version : '检查失败');
+
+            var lines = [
                 result.message || '检查完成',
-                `当前版本：${result.current_version || '-'}`,
-                `远程版本：${result.remote_version || '-'}`,
+                '当前版本：' + (result.current_version || '-'),
+                '远程版本：' + (result.remote_version || '-'),
             ];
-            if (result.release_date) lines.push(`发布日期：${result.release_date}`);
-            if (result.description) lines.push(`更新说明：${result.description}`);
-            if (updateOutput) updateOutput.textContent = lines.join('\n');
+            if (result.release_date) lines.push('发布日期：' + result.release_date);
+            if (result.description) lines.push('更新说明：' + result.description);
+            setText(updateOutput, lines.join('\n'));
+
             if (result.ok && result.has_update && updateBtn) {
                 updateBtn.classList.remove('hidden');
             }
         } catch (error) {
-            if (updateOutput) updateOutput.textContent = `检查失败：${error.message}`;
+            setText(updateOutput, '检查失败：' + error.message);
         } finally {
             checkUpdateBtn.disabled = false;
+            checkUpdateBtn.textContent = '检查更新';
         }
     });
 }
 
 if (updateBtn) {
-    updateBtn.addEventListener('click', async () => {
+    updateBtn.addEventListener('click', async function () {
         updateBtn.disabled = true;
-        if (updateOutput) updateOutput.textContent = '正在执行更新，请稍等...';
+        updateBtn.textContent = '更新中...';
+        setText(updateOutput, '正在执行更新，请稍等...');
         try {
-            const result = await postAdmin('update');
-            if (updateOutput) updateOutput.textContent = `${result.message || ''}\n\n${result.output || ''}`.trim();
+            var result = await postAdmin('update');
+            setText(updateOutput, ((result.message || '') + '\n\n' + (result.output || '')).trim());
         } catch (error) {
-            if (updateOutput) updateOutput.textContent = `请求失败：${error.message}`;
+            setText(updateOutput, '请求失败：' + error.message);
         } finally {
             updateBtn.disabled = false;
+            updateBtn.textContent = '立即更新';
         }
     });
 }

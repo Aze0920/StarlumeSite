@@ -32,49 +32,66 @@ if ($path === '/' || $path === '/index.php') {
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title><?= JMWEB_NAME ?> - 轻量网站系统</title>
-    <meta name="description" content="<?= JMWEB_NAME ?> 是一套可直接上传宝塔运行的前后台网站系统。">
+    <title>兑换验证台</title>
+    <meta name="description" content="输入兑换码获取手机号，并查看验证码接收状态。">
     <link rel="stylesheet" href="/assets/css/style.css">
 </head>
-<body>
-    <header class="site-header">
-        <nav class="nav container">
-            <a class="brand" href="/"><span class="brand-mark">S</span><span><?= JMWEB_NAME ?></span></a>
-            <div class="nav-links"><a href="#features">功能</a><a href="#deploy">部署</a><a href="/admin/">后台</a></div>
-        </nav>
-    </header>
-    <main>
-        <section class="hero container">
-            <div class="hero-copy">
-                <span class="eyebrow">Simple · Modern · Baota Ready</span>
-                <h1>漂亮、轻量、可直接上传宝塔的网站起步版。</h1>
-                <p>已包含安装向导、数据库配置、前台展示页、后台登录页、后台总览、一键更新入口，以及 GitHub 一键上传脚本。</p>
-                <div class="hero-actions"><a class="btn primary" href="/admin/">进入后台</a><a class="btn ghost" href="#deploy">查看部署说明</a></div>
-            </div>
-            <div class="hero-card">
-                <div class="window-bar"><span></span><span></span><span></span></div>
-                <div class="metric-grid">
-                    <div><strong>1.0.0</strong><small>当前版本</small></div>
-                    <div><strong>PHP</strong><small>原生运行</small></div>
-                    <div><strong>Public</strong><small>运行目录</small></div>
-                    <div><strong>GitHub</strong><small>一键同步</small></div>
+<body class="app-shell redeem-shell">
+    <main class="page page-public">
+        <section class="redeem-hero">
+            <p class="eyebrow">Voucher Exchange</p>
+            <h1>兑换码验证</h1>
+            <p class="lead">兑换后 8 分钟到期，没收到验证码或者手机无法使用，可以过 2 分钟后点击取消激活，可以重新兑换会更换新的号码。收到验证码后兑换券会被消费。一个号只能接一次码。</p>
+            <p class="service-notice"><strong>使用提示：</strong>不退不换，手机号错误点击取消激活，多兑换几次。</p>
+        </section>
+
+        <section class="redeem-panel">
+            <form id="redeem-form" class="stack-form">
+                <label for="voucher-code">兑换码</label>
+                <input id="voucher-code" name="code" maxlength="19" placeholder="XXXX-XXXX-XXXX-XXXX" autocomplete="off">
+                <button id="redeem-submit" type="submit">开始验证</button>
+            </form>
+            <p id="redeem-message" class="message" aria-live="polite"></p>
+        </section>
+
+        <section id="activation-panel" class="redeem-panel hidden">
+            <div class="status-grid">
+                <div>
+                    <span class="label">手机号</span>
+                    <span class="phone-line">
+                        <strong id="phone-number">-</strong>
+                        <button id="copy-phone-button" class="icon-button" type="button" aria-label="复制手机号" title="复制手机号" disabled>
+                            <svg aria-hidden="true" viewBox="0 0 24 24" focusable="false">
+                                <rect x="9" y="9" width="11" height="11" rx="2"></rect>
+                                <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                            </svg>
+                        </button>
+                    </span>
+                </div>
+                <div>
+                    <span class="label">状态</span>
+                    <strong id="activation-state">-</strong>
+                </div>
+                <div>
+                    <span class="label">验证码</span>
+                    <strong id="activation-code">等待中</strong>
+                </div>
+                <div>
+                    <span class="label">到期时间</span>
+                    <strong id="activation-expiry">-</strong>
                 </div>
             </div>
-        </section>
-        <section id="features" class="section container">
-            <div class="section-title"><span>核心模块</span><h2>先做最简单，但结构留好。</h2></div>
-            <div class="cards">
-                <article class="card"><b>安装向导</b><p>首次访问自动跳转安装页，填写数据库后自动写入配置和安装锁。</p></article>
-                <article class="card"><b>管理后台</b><p>安装时设置管理员账号密码，后台包含总览、站点信息、系统更新。</p></article>
-                <article class="card"><b>一键更新</b><p>后台点击即可尝试从 GitHub 拉取最新代码并同步到当前网站目录。</p></article>
+            <div class="button-row">
+                <button id="refresh-status" type="button" class="secondary">刷新状态</button>
+                <div id="cancel-control" class="cancel-control">
+                    <button id="cancel-activation" type="button" class="danger">取消激活</button>
+                    <span id="cancel-countdown" class="countdown" aria-live="polite"></span>
+                </div>
             </div>
-        </section>
-        <section id="deploy" class="section container deploy-panel">
-            <div><span class="eyebrow">Deployment</span><h2>宝塔运行目录</h2><p>上传整个项目到服务器后，请把宝塔网站运行目录设置为 <code>/public</code>。首次访问会进入 <code>/install.php</code> 安装。</p></div>
-            <a class="btn primary" href="/admin/">立即管理</a>
+            <p class="message">未收到验证码可取消激活；收到验证码后兑换券会直接消费，无法取消。</p>
+            <p class="service-notice"><strong>使用提示：</strong>不退不换，手机号错误点击取消激活，多兑换几次。</p>
         </section>
     </main>
-    <footer class="footer container">© <?= date('Y') ?> <?= JMWEB_NAME ?> · Repository: <?= JMWEB_REPO_NAME ?></footer>
     <script src="/assets/js/app.js"></script>
 </body>
 </html>

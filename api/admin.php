@@ -10,6 +10,34 @@ set_error_handler(function ($severity, $message, $file, $line) {
 });
 
 try {
+    function jmweb_fetch_url($url)
+    {
+        if (function_exists('curl_init')) {
+            $ch = curl_init($url);
+            curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+            curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 8);
+            curl_setopt($ch, CURLOPT_TIMEOUT, 15);
+            curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+            curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, false);
+            curl_setopt($ch, CURLOPT_USERAGENT, 'JmWeb-Updater');
+            $body = curl_exec($ch);
+            curl_close($ch);
+            return $body;
+        }
+
+        $context = stream_context_create(array(
+            'http' => array(
+                'timeout' => 12,
+                'header' => "User-Agent: JmWeb-Updater\r\n",
+            ),
+            'ssl' => array(
+                'verify_peer' => false,
+                'verify_peer_name' => false,
+            ),
+        ));
+        return @file_get_contents($url, false, $context);
+    }
+
     $action = isset($_POST['action']) ? $_POST['action'] : (isset($_GET['action']) ? $_GET['action'] : '');
 
     if ($action !== 'login') {
@@ -37,13 +65,7 @@ try {
     if ($action === 'check_update') {
         jmweb_require_admin();
 
-        $context = stream_context_create(array(
-            'http' => array(
-                'timeout' => 12,
-                'header' => "User-Agent: JmWeb-Updater\r\n",
-            ),
-        ));
-        $raw = @file_get_contents(JMWEB_UPDATE_INFO_URL . '?t=' . time(), false, $context);
+        $raw = jmweb_fetch_url(JMWEB_UPDATE_INFO_URL . '?t=' . time());
         if ($raw === false || trim($raw) === '') {
             jmweb_json(array(
                 'ok' => false,
