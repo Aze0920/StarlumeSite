@@ -149,6 +149,9 @@ code { padding: 3px 7px; border-radius: 8px; background: #eef2ff; color: #4338ca
 .panel h2 { margin: 8px 0 10px; font-size: clamp(1.8rem, 4vw, 3rem); letter-spacing: -.05em; }
 .nice-list { line-height: 2; color: #475467; }
 .info-list p { padding: 12px 0; border-bottom: 1px solid #eef2f7; }
+.settings-form { margin-top: 20px; }
+.settings-form .hero-actions { margin-top: 20px; }
+.settings-form .form-msg { margin-top: 12px; font-weight: 850; }
 .console-box { margin-top: 18px; min-height: 260px; max-height: 460px; overflow: auto; padding: 18px; border-radius: 18px; background: #0b1220; color: #dbeafe; white-space: pre-wrap; }
 .update-status-card { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; margin: 18px 0; }
 .update-status-card > div { border: 1px solid #eef2ff; border-radius: 18px; padding: 16px; background: #f8fafc; }
@@ -175,8 +178,9 @@ code { padding: 3px 7px; border-radius: 8px; background: #eef2ff; color: #4338ca
 .form-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 15px; }
 .form-grid label { display: grid; gap: 8px; font-weight: 800; color: #344054; }
 .form-grid label.wide { grid-column: 1 / -1; }
-.form-grid input { width: 100%; border: 1px solid #d0d5dd; border-radius: 16px; padding: 13px 15px; font-size: 1rem; outline: none; }
-.form-grid input:focus { border-color: var(--primary); box-shadow: 0 0 0 4px rgba(99,91,255,.12); }
+.form-grid input, .form-grid textarea { width: 100%; border: 1px solid #d0d5dd; border-radius: 16px; padding: 13px 15px; font-size: 1rem; outline: none; font-family: inherit; }
+.form-grid textarea { min-height: 92px; resize: vertical; line-height: 1.7; }
+.form-grid input:focus, .form-grid textarea:focus { border-color: var(--primary); box-shadow: 0 0 0 4px rgba(99,91,255,.12); }
 .done-box { min-height: 420px; display: flex; flex-direction: column; justify-content: center; }
 .done-box h2 { font-size: 2.4rem; }
 

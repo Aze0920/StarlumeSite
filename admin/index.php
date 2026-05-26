@@ -1,4 +1,8 @@
-<?php require_once dirname(__DIR__) . '/config/app.php'; ?>
+<?php
+require_once dirname(__DIR__) . '/config/app.php';
+require_once dirname(__DIR__) . '/config/settings.php';
+$jmwebSettings = jmweb_read_settings();
+?>
 <!doctype html>
 <html lang="zh-CN">
 <head>
@@ -26,10 +30,10 @@
 <?php else: ?>
     <div class="admin-shell">
         <aside class="sidebar">
-            <a class="brand" href="../"><span class="brand-mark">S</span><span><?= JMWEB_NAME ?></span></a>
+            <a class="brand" href="../"><span class="brand-mark">S</span><span><?= htmlspecialchars($jmwebSettings['site_name'], ENT_QUOTES, 'UTF-8') ?></span></a>
             <button class="side-link active" data-page="dashboard">控制台</button>
             <button class="side-link" data-page="update">系统更新</button>
-            <button class="side-link" data-page="settings">基础信息</button>
+            <button class="side-link" data-page="settings">基本设置</button>
             <button id="logoutBtn" class="side-link danger">退出登录</button>
         </aside>
         <main class="admin-main">
@@ -40,7 +44,7 @@
 
             <section class="admin-page" id="page-dashboard">
                 <div class="admin-grid">
-                    <article class="stat"><strong><?= JMWEB_NAME ?></strong><span>站点名称</span></article>
+                    <article class="stat"><strong><?= htmlspecialchars($jmwebSettings['site_name'], ENT_QUOTES, 'UTF-8') ?></strong><span>站点名称</span></article>
                     <article class="stat"><strong><?= JMWEB_VERSION ?></strong><span>当前版本</span></article>
                     <article class="stat"><strong>正常</strong><span>运行状态</span></article>
                 </div>
@@ -81,13 +85,35 @@
 
             <section class="admin-page hidden" id="page-settings">
                 <div class="panel">
-                    <h2>基础信息</h2>
-                    <div class="info-list">
-                        <p><b>网站名称：</b><?= JMWEB_NAME ?></p>
-                        <p><b>仓库名建议：</b><?= JMWEB_REPO_NAME ?></p>
-                        <p><b>本地目录：</b><?= JMWEB_SITE_DIR ?></p>
-                        <p><b>后台账号：</b>安装时设置的管理员账号</p>
-                    </div>
+                    <h2>基本设置</h2>
+                    <p class="muted">这里保存的是服务器本地配置，在线更新不会覆盖这些设置。</p>
+                    <form id="settingsForm" class="settings-form">
+                        <div class="form-grid">
+                            <label>站点名称
+                                <input name="site_name" value="<?= htmlspecialchars($jmwebSettings['site_name'], ENT_QUOTES, 'UTF-8') ?>" maxlength="40">
+                            </label>
+                            <label>首页标题
+                                <input name="home_title" value="<?= htmlspecialchars($jmwebSettings['home_title'], ENT_QUOTES, 'UTF-8') ?>" maxlength="60">
+                            </label>
+                            <label>兑换有效期（分钟）
+                                <input name="exchange_expire_minutes" type="number" min="1" max="60" value="<?= (int) $jmwebSettings['exchange_expire_minutes'] ?>">
+                            </label>
+                            <label>取消等待时间（分钟）
+                                <input name="cancel_wait_minutes" type="number" min="0" max="30" value="<?= (int) $jmwebSettings['cancel_wait_minutes'] ?>">
+                            </label>
+                            <label class="wide">首页说明文案
+                                <textarea name="home_subtitle" rows="4" maxlength="500"><?= htmlspecialchars($jmwebSettings['home_subtitle'], ENT_QUOTES, 'UTF-8') ?></textarea>
+                            </label>
+                            <label class="wide">红色使用提示
+                                <textarea name="notice_text" rows="3" maxlength="300"><?= htmlspecialchars($jmwebSettings['notice_text'], ENT_QUOTES, 'UTF-8') ?></textarea>
+                            </label>
+                        </div>
+                        <div class="hero-actions">
+                            <button class="btn primary" type="submit">保存设置</button>
+                            <button class="btn ghost" type="button" id="resetSettingsBtn">恢复默认</button>
+                        </div>
+                        <div id="settingsMsg" class="form-msg"></div>
+                    </form>
                 </div>
             </section>
         </main>

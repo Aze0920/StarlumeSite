@@ -5,6 +5,7 @@ ob_start();
 
 require_once dirname(__DIR__) . '/config/app.php';
 require_once dirname(__DIR__) . '/config/database_helper.php';
+require_once dirname(__DIR__) . '/config/settings.php';
 
 function jmweb_api_log_path()
 {
@@ -199,6 +200,35 @@ try {
     if ($action === 'logout') {
         unset($_SESSION['jmweb_admin']);
         jmweb_api_json(array('ok' => true, 'message' => '已退出登录'));
+    }
+
+    if ($action === 'get_settings') {
+        jmweb_require_admin();
+        jmweb_api_json(array(
+            'ok' => true,
+            'settings' => jmweb_read_settings(),
+            'defaults' => jmweb_default_settings(),
+        ));
+    }
+
+    if ($action === 'save_settings') {
+        jmweb_require_admin();
+        $settings = jmweb_clean_settings($_POST);
+        if (!jmweb_save_settings($settings)) {
+            jmweb_api_json(array('ok' => false, 'message' => '保存失败，请检查 data 目录写入权限。'));
+        }
+        jmweb_log('管理员保存基本设置');
+        jmweb_api_json(array('ok' => true, 'message' => '基本设置已保存。', 'settings' => $settings));
+    }
+
+    if ($action === 'reset_settings') {
+        jmweb_require_admin();
+        $settings = jmweb_default_settings();
+        if (!jmweb_save_settings($settings)) {
+            jmweb_api_json(array('ok' => false, 'message' => '恢复失败，请检查 data 目录写入权限。'));
+        }
+        jmweb_log('管理员恢复默认基本设置');
+        jmweb_api_json(array('ok' => true, 'message' => '已恢复默认设置。', 'settings' => $settings));
     }
 
     if ($action === 'check_update') {

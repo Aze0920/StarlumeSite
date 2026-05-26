@@ -202,6 +202,7 @@ function copy_update_files($source, $target, $root = null, &$stats = null)
         'config/database.php',
         'data/install.lock',
         'data/update.log',
+        'data/settings.json',
     );
     if (!is_dir($target)) {
         mkdir($target, 0755, true);

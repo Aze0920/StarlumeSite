@@ -15,6 +15,11 @@
 
     var currentActivation = null;
     var countdownTimer = null;
+    var publicSettings = window.JMWEB_PUBLIC_SETTINGS || {};
+    var exchangeExpireMinutes = parseInt(publicSettings.exchangeExpireMinutes || 5, 10);
+    var cancelWaitMinutes = parseInt(publicSettings.cancelWaitMinutes || 2, 10);
+    if (!exchangeExpireMinutes || exchangeExpireMinutes < 1) exchangeExpireMinutes = 5;
+    if (cancelWaitMinutes < 0) cancelWaitMinutes = 0;
 
     function setMessage(text, type) {
         if (!redeemMessage) return;
@@ -82,13 +87,13 @@
             }
             setMessage('兑换功能接口待接入，当前先展示手机号状态面板。', 'success');
 
-            var expiry = new Date(Date.now() + 5 * 60 * 1000);
+            var expiry = new Date(Date.now() + exchangeExpireMinutes * 60 * 1000);
             renderActivation({
                 phone: '-',
                 state: '待接入',
                 code: '等待中',
                 expiryText: formatTime(expiry),
-                cancelAvailableAt: Date.now() + 2 * 60 * 1000,
+                cancelAvailableAt: Date.now() + cancelWaitMinutes * 60 * 1000,
             });
 
             setTimeout(function () {

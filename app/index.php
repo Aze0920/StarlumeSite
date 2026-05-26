@@ -11,6 +11,8 @@ header('X-XSS-Protection: 1; mode=block');
 header('Referrer-Policy: strict-origin-when-cross-origin');
 
 require_once dirname(__DIR__) . '/config/app.php';
+require_once dirname(__DIR__) . '/config/settings.php';
+$jmwebSettings = jmweb_read_settings();
 
 $path = parse_url(isset($_SERVER['REQUEST_URI']) ? $_SERVER['REQUEST_URI'] : '/', PHP_URL_PATH);
 if (!$path) {
@@ -32,7 +34,7 @@ if ($path === '/' || $path === '/index.php') {
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>兑换验证台</title>
+    <title><?= htmlspecialchars($jmwebSettings['home_title'], ENT_QUOTES, 'UTF-8') ?></title>
     <meta name="description" content="输入兑换码获取手机号，并查看验证码接收状态。">
     <link rel="stylesheet" href="/assets/css/style.css">
 </head>
@@ -40,9 +42,9 @@ if ($path === '/' || $path === '/index.php') {
     <main class="page page-public">
         <section class="redeem-hero">
             <p class="eyebrow">Voucher Exchange</p>
-            <h1>兑换码验证</h1>
-            <p class="lead">兑换后 5 分钟到期，没收到验证码或者手机无法使用，可以过 2 分钟后点击取消激活，可以重新兑换会更换新的号码。收到验证码后兑换券会被消费。一个号只能接一次码。</p>
-            <p class="service-notice"><strong>使用提示：</strong>不退不换，手机号错误点击取消激活，多兑换几次。</p>
+            <h1><?= htmlspecialchars($jmwebSettings['home_title'], ENT_QUOTES, 'UTF-8') ?></h1>
+            <p class="lead"><?= htmlspecialchars($jmwebSettings['home_subtitle'], ENT_QUOTES, 'UTF-8') ?></p>
+            <p class="service-notice"><strong>使用提示：</strong><?= htmlspecialchars($jmwebSettings['notice_text'], ENT_QUOTES, 'UTF-8') ?></p>
         </section>
 
         <section class="redeem-panel">
@@ -89,9 +91,15 @@ if ($path === '/' || $path === '/index.php') {
                 </div>
             </div>
             <p class="message">未收到验证码可取消激活；收到验证码后兑换券会直接消费，无法取消。</p>
-            <p class="service-notice"><strong>使用提示：</strong>不退不换，手机号错误点击取消激活，多兑换几次。</p>
+            <p class="service-notice"><strong>使用提示：</strong><?= htmlspecialchars($jmwebSettings['notice_text'], ENT_QUOTES, 'UTF-8') ?></p>
         </section>
     </main>
+    <script>
+        window.JMWEB_PUBLIC_SETTINGS = {
+            exchangeExpireMinutes: <?= (int) $jmwebSettings['exchange_expire_minutes'] ?>,
+            cancelWaitMinutes: <?= (int) $jmwebSettings['cancel_wait_minutes'] ?>
+        };
+    </script>
     <script src="/assets/js/app.js"></script>
 </body>
 </html>

@@ -1,8 +1,8 @@
 {
-  "version": "1.0.25",
+  "version": "1.0.26",
   "name": "豪猪接码",
   "repo": "https://github.com/Aze0920/StarlumeSite",
   "branch": "main",
   "release_date": "2026-05-26",
-  "description": "小更新：修复同大小文件内容变化不更新，并保持前台 5 分钟提示。"
+  "description": "小更新：后台新增基本设置页面，支持配置前台文案和时间。"
 }
