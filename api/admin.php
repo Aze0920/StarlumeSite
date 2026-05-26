@@ -124,6 +124,33 @@ try {
         return @file_get_contents($url, false, $context);
     }
 
+    function jmweb_fetch_github_version_info()
+    {
+        $apiUrl = 'https://api.github.com/repos/Aze0920/StarlumeSite/contents/version.json?ref=main&t=' . time();
+        $raw = jmweb_fetch_url($apiUrl);
+        if ($raw !== false && trim($raw) !== '') {
+            $api = json_decode($raw, true);
+            if (is_array($api) && !empty($api['content'])) {
+                $content = base64_decode(str_replace(array("\r", "\n", ' '), '', $api['content']));
+                $json = json_decode($content, true);
+                if (is_array($json) && !empty($json['version'])) {
+                    $json['_source'] = 'GitHub API';
+                    return $json;
+                }
+            }
+        }
+
+        $raw = jmweb_fetch_url(JMWEB_UPDATE_INFO_URL . '?t=' . time());
+        if ($raw === false || trim($raw) === '') {
+            return false;
+        }
+        $json = json_decode($raw, true);
+        if (is_array($json)) {
+            $json['_source'] = 'GitHub raw';
+        }
+        return $json;
+    }
+
     $action = isset($_POST['action']) ? $_POST['action'] : (isset($_GET['action']) ? $_GET['action'] : '');
 
     if ($action !== 'login') {
@@ -151,8 +178,8 @@ try {
     if ($action === 'check_update') {
         jmweb_require_admin();
 
-        $raw = jmweb_fetch_url(JMWEB_UPDATE_INFO_URL . '?t=' . time());
-        if ($raw === false || trim($raw) === '') {
+        $remote = jmweb_fetch_github_version_info();
+        if ($remote === false) {
             jmweb_api_json(array(
                 'ok' => false,
                 'message' => '检查失败：无法读取远程版本信息，请确认服务器能访问 GitHub。',
@@ -161,13 +188,12 @@ try {
             ));
         }
 
-        $remote = json_decode($raw, true);
         if (!is_array($remote) || empty($remote['version'])) {
             jmweb_api_json(array(
                 'ok' => false,
                 'message' => '检查失败：远程版本信息格式不正确。',
                 'current_version' => JMWEB_VERSION,
-                'output' => $raw,
+                'output' => json_encode($remote, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT),
             ));
         }
 
@@ -182,6 +208,7 @@ try {
             'release_date' => isset($remote['release_date']) ? $remote['release_date'] : '',
             'description' => isset($remote['description']) ? $remote['description'] : '',
             'repo' => isset($remote['repo']) ? $remote['repo'] : JMWEB_UPDATE_REPO,
+            'source' => isset($remote['_source']) ? $remote['_source'] : '',
         ));
     }
 
