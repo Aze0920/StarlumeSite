@@ -60,6 +60,8 @@ function jmweb_ensure_cards_table()
         `phone` varchar(32) NOT NULL DEFAULT '',
         `provider_uid` varchar(80) NOT NULL DEFAULT '',
         `provider_sid` varchar(80) NOT NULL DEFAULT '',
+        `provider_host` varchar(120) NOT NULL DEFAULT '',
+        `expires_at` int unsigned NOT NULL DEFAULT 0,
         `used_at` int unsigned NOT NULL DEFAULT 0,
         `disabled_at` int unsigned NOT NULL DEFAULT 0,
         `created_at` int unsigned NOT NULL DEFAULT 0,
@@ -76,6 +78,8 @@ function jmweb_ensure_cards_table()
         'phone' => "ALTER TABLE `jm_cards` ADD COLUMN `phone` varchar(32) NOT NULL DEFAULT '' AFTER `status`",
         'provider_uid' => "ALTER TABLE `jm_cards` ADD COLUMN `provider_uid` varchar(80) NOT NULL DEFAULT '' AFTER `phone`",
         'provider_sid' => "ALTER TABLE `jm_cards` ADD COLUMN `provider_sid` varchar(80) NOT NULL DEFAULT '' AFTER `provider_uid`",
+        'provider_host' => "ALTER TABLE `jm_cards` ADD COLUMN `provider_host` varchar(120) NOT NULL DEFAULT '' AFTER `provider_sid`",
+        'expires_at' => "ALTER TABLE `jm_cards` ADD COLUMN `expires_at` int unsigned NOT NULL DEFAULT 0 AFTER `provider_host`",
     );
     foreach ($columns as $column => $sql) {
         if (!jmweb_table_has_column($pdo, 'jm_cards', $column)) {

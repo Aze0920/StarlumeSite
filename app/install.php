@@ -69,6 +69,8 @@ function installer_init_database($config, $adminUser, $adminPassword, $adminEmai
         `phone` varchar(32) NOT NULL DEFAULT '',
         `provider_uid` varchar(80) NOT NULL DEFAULT '',
         `provider_sid` varchar(80) NOT NULL DEFAULT '',
+        `provider_host` varchar(120) NOT NULL DEFAULT '',
+        `expires_at` int unsigned NOT NULL DEFAULT 0,
         `used_at` int unsigned NOT NULL DEFAULT 0,
         `disabled_at` int unsigned NOT NULL DEFAULT 0,
         `created_at` int unsigned NOT NULL DEFAULT 0,

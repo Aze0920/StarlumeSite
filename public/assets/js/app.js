@@ -15,6 +15,24 @@
 
     var currentActivation = null;
     var countdownTimer = null;
+    var pollTimer = null;
+
+    function postPublic(action, payload) {
+        payload = payload || {};
+        var form = new FormData();
+        form.append('action', action);
+        Object.keys(payload).forEach(function (key) { form.append(key, payload[key]); });
+        return fetch('/api/admin.php', { method: 'POST', body: form, credentials: 'same-origin' }).then(function (response) {
+            return response.text();
+        }).then(function (text) {
+            try {
+                return JSON.parse(text);
+            } catch (error) {
+                var preview = text.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 260);
+                return { ok: false, message: preview ? '服务器返回异常：' + preview : '服务器返回为空。' };
+            }
+        });
+    }
 
     function setMessage(text, type) {
         if (!redeemMessage) return;
@@ -23,12 +41,26 @@
     }
 
     function formatVoucher(value) {
-        return value.replace(/[^a-zA-Z0-9]/g, '').toUpperCase().slice(0, 16).replace(/(.{4})/g, '$1-').replace(/-$/, '');
+        var clean = value.replace(/[^a-zA-Z0-9]/g, '').toUpperCase();
+        if (clean.indexOf('HZ') === 0) clean = clean.slice(2);
+        clean = clean.slice(0, 22);
+        var project = clean.slice(0, Math.max(0, clean.length - 12));
+        var tail = clean.slice(Math.max(0, clean.length - 12));
+        var groups = [];
+        if (project) groups.push(project);
+        tail.replace(/.{1,4}/g, function (part) { groups.push(part); return part; });
+        return 'HZ' + (groups.length ? '-' + groups.join('-') : '');
     }
 
-    function formatTime(date) {
+    function formatTimeBySeconds(timestamp) {
+        var date = new Date(timestamp * 1000);
         var pad = function (n) { return n < 10 ? '0' + n : String(n); };
         return date.getFullYear() + '/' + pad(date.getMonth() + 1) + '/' + pad(date.getDate()) + ' ' + pad(date.getHours()) + ':' + pad(date.getMinutes()) + ':' + pad(date.getSeconds());
+    }
+
+    function stopPolling() {
+        if (pollTimer) clearInterval(pollTimer);
+        pollTimer = null;
     }
 
     function renderActivation(data) {
@@ -37,24 +69,52 @@
         if (phoneNumber) phoneNumber.textContent = data.phone || '-';
         if (activationState) activationState.textContent = data.state || '-';
         if (activationCode) activationCode.textContent = data.code || '等待中';
-        if (activationExpiry) activationExpiry.textContent = data.expiryText || '-';
+        if (activationExpiry) activationExpiry.textContent = data.expires_at ? formatTimeBySeconds(data.expires_at) : '-';
         if (copyPhoneButton) copyPhoneButton.disabled = !data.phone;
-        startCancelCountdown(data.cancelAvailableAt || 0);
+        startCountdown(data.expires_at || 0);
     }
 
-    function startCancelCountdown(availableAt) {
+    function startCountdown(expiresAt) {
         if (countdownTimer) clearInterval(countdownTimer);
         var tick = function () {
-            var remain = Math.max(0, Math.ceil((availableAt - Date.now()) / 1000));
+            var remain = Math.max(0, (expiresAt || 0) - Math.floor(Date.now() / 1000));
             if (cancelActivation) cancelActivation.disabled = remain > 0;
-            if (cancelCountdown) cancelCountdown.textContent = remain > 0 ? remain + ' 秒后可取消' : '';
-            if (remain <= 0 && countdownTimer) {
-                clearInterval(countdownTimer);
+            if (cancelCountdown) cancelCountdown.textContent = remain > 0 ? remain + ' 秒后可更换号码' : '可以更换号码';
+            if (remain <= 0) {
+                stopPolling();
+                if (activationState && currentActivation && !currentActivation.code) activationState.textContent = '已超时';
+                if (countdownTimer) clearInterval(countdownTimer);
                 countdownTimer = null;
             }
         };
         tick();
         countdownTimer = setInterval(tick, 1000);
+    }
+
+    function pollCode(manual) {
+        if (!currentActivation || !currentActivation.card_id) return;
+        return postPublic('poll_code', { card_id: currentActivation.card_id }).then(function (result) {
+            if (result.activation) renderActivation(result.activation);
+            if (result.received) {
+                stopPolling();
+                setMessage(result.message || '已收到验证码。', 'success');
+                return;
+            }
+            if (result.expired) {
+                stopPolling();
+                setMessage(result.message || '240 秒已到，可以更换号码。', 'info');
+                return;
+            }
+            if (manual) setMessage(result.message || '暂未收到验证码。', 'info');
+        }).catch(function (error) {
+            if (manual) setMessage('刷新失败：' + error.message, 'error');
+        });
+    }
+
+    function startPolling() {
+        stopPolling();
+        pollCode(false);
+        pollTimer = setInterval(function () { pollCode(false); }, 5000);
     }
 
     if (voucherInput) {
@@ -71,32 +131,32 @@
                 setMessage('请输入兑换码。', 'error');
                 return;
             }
-            if (code.replace(/-/g, '').length < 8) {
+            if (code.replace(/-/g, '').length < 12) {
                 setMessage('兑换码格式不正确。', 'error');
                 return;
             }
-
             if (redeemSubmit) {
                 redeemSubmit.disabled = true;
-                redeemSubmit.textContent = '验证中...';
+                redeemSubmit.textContent = '获取中...';
             }
-            setMessage('兑换功能接口待接入，当前先展示手机号状态面板。', 'success');
-
-            var expiry = new Date(Date.now() + 8 * 60 * 1000);
-            renderActivation({
-                phone: '-',
-                state: '待接入',
-                code: '等待中',
-                expiryText: formatTime(expiry),
-                cancelAvailableAt: Date.now() + 2 * 60 * 1000,
-            });
-
-            setTimeout(function () {
+            setMessage('正在获取手机号，请稍等...', 'info');
+            stopPolling();
+            postPublic('redeem_card', { code: code }).then(function (result) {
+                if (!result.ok) {
+                    setMessage(result.message || '获取失败。', 'error');
+                    return;
+                }
+                renderActivation(result.activation || {});
+                setMessage(result.message || '已获取手机号，240 秒内持续获取验证码。', 'success');
+                startPolling();
+            }).catch(function (error) {
+                setMessage('请求失败：' + error.message, 'error');
+            }).finally(function () {
                 if (redeemSubmit) {
                     redeemSubmit.disabled = false;
                     redeemSubmit.textContent = '开始验证';
                 }
-            }, 400);
+            });
         });
     }
 
@@ -114,14 +174,31 @@
 
     if (refreshStatus) {
         refreshStatus.addEventListener('click', function () {
-            setMessage('状态刷新接口待接入。', 'info');
-            if (currentActivation) renderActivation(currentActivation);
+            pollCode(true);
         });
     }
 
     if (cancelActivation) {
         cancelActivation.addEventListener('click', function () {
-            setMessage('取消激活接口待接入。', 'info');
+            if (!currentActivation || !currentActivation.card_id) return;
+            cancelActivation.disabled = true;
+            setMessage('正在取消当前号码...', 'info');
+            postPublic('cancel_activation', { card_id: currentActivation.card_id }).then(function (result) {
+                if (result.activation) renderActivation(result.activation);
+                setMessage(result.message || '操作完成。', result.ok ? 'success' : 'error');
+                if (result.ok) {
+                    stopPolling();
+                    if (phoneNumber) phoneNumber.textContent = '-';
+                    if (activationState) activationState.textContent = '已取消';
+                    if (activationCode) activationCode.textContent = '等待中';
+                    if (activationExpiry) activationExpiry.textContent = '-';
+                    if (copyPhoneButton) copyPhoneButton.disabled = true;
+                }
+            }).catch(function (error) {
+                setMessage('取消失败：' + error.message, 'error');
+            }).finally(function () {
+                cancelActivation.disabled = false;
+            });
         });
     }
 })();

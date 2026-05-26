@@ -1,8 +1,8 @@
 {
-  "version": "1.0.33",
+  "version": "1.0.34",
   "name": "豪猪接码",
   "repo": "https://github.com/Aze0920/StarlumeSite",
   "branch": "main",
   "release_date": "2026-05-27",
-  "description": "小更新：修复老数据库自动补卡密表字段时的 MySQL SHOW COLUMNS 兼容错误，卡密逐条写入 jm_cards 独立表。"
+  "description": "小更新：前台兑换接入真实取号，获取手机号后显示手机号，并在240秒内自动轮询验证码，超时后允许更换号码。"
 }

@@ -50,7 +50,7 @@ if ($path === '/' || $path === '/index.php') {
         <section class="redeem-panel">
             <form id="redeem-form" class="stack-form">
                 <label for="voucher-code">兑换码</label>
-                <input id="voucher-code" name="code" maxlength="19" placeholder="XXXX-XXXX-XXXX-XXXX" autocomplete="off">
+                <input id="voucher-code" name="code" maxlength="32" placeholder="HZ-项目ID-XXXX-XXXX-XXXX" autocomplete="off">
                 <button id="redeem-submit" type="submit">开始验证</button>
             </form>
             <p id="redeem-message" class="message" aria-live="polite"></p>
