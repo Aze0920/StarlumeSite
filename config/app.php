@@ -9,6 +9,7 @@ define('JMWEB_VERSION', '1.0.0');
 define('JMWEB_ADMIN_USER', 'admin');
 define('JMWEB_ADMIN_PASSWORD', '123456');
 define('JMWEB_UPDATE_REPO', 'https://github.com/Aze0920/StarlumeSite.git');
+define('JMWEB_UPDATE_INFO_URL', 'https://raw.githubusercontent.com/Aze0920/StarlumeSite/main/version.json');
 define('JMWEB_SITE_DIR', dirname(__DIR__));
 define('JMWEB_UPDATE_WORKDIR', dirname(__DIR__) . DIRECTORY_SEPARATOR . 'data' . DIRECTORY_SEPARATOR . 'update-source');
 

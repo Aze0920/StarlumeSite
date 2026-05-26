@@ -44,17 +44,49 @@ if (logoutBtn) {
     });
 }
 
+const checkUpdateBtn = document.getElementById('checkUpdateBtn');
 const updateBtn = document.getElementById('updateBtn');
+const updateOutput = document.getElementById('updateOutput');
+const remoteVersion = document.getElementById('remoteVersion');
+
+if (checkUpdateBtn) {
+    checkUpdateBtn.addEventListener('click', async () => {
+        checkUpdateBtn.disabled = true;
+        updateBtn?.classList.add('hidden');
+        if (updateOutput) updateOutput.textContent = '正在检查远程版本，请稍等...';
+        try {
+            const result = await postAdmin('check_update');
+            if (remoteVersion) {
+                remoteVersion.textContent = result.remote_version ? `v${result.remote_version}` : '检查失败';
+            }
+            const lines = [
+                result.message || '检查完成',
+                `当前版本：${result.current_version || '-'}`,
+                `远程版本：${result.remote_version || '-'}`,
+            ];
+            if (result.release_date) lines.push(`发布日期：${result.release_date}`);
+            if (result.description) lines.push(`更新说明：${result.description}`);
+            if (updateOutput) updateOutput.textContent = lines.join('\n');
+            if (result.ok && result.has_update && updateBtn) {
+                updateBtn.classList.remove('hidden');
+            }
+        } catch (error) {
+            if (updateOutput) updateOutput.textContent = `检查失败：${error.message}`;
+        } finally {
+            checkUpdateBtn.disabled = false;
+        }
+    });
+}
+
 if (updateBtn) {
     updateBtn.addEventListener('click', async () => {
-        const output = document.getElementById('updateOutput');
         updateBtn.disabled = true;
-        output.textContent = '正在执行一键更新，请稍等...';
+        if (updateOutput) updateOutput.textContent = '正在执行更新，请稍等...';
         try {
             const result = await postAdmin('update');
-            output.textContent = `${result.message || ''}\n\n${result.output || ''}`.trim();
+            if (updateOutput) updateOutput.textContent = `${result.message || ''}\n\n${result.output || ''}`.trim();
         } catch (error) {
-            output.textContent = `请求失败：${error.message}`;
+            if (updateOutput) updateOutput.textContent = `请求失败：${error.message}`;
         } finally {
             updateBtn.disabled = false;
         }

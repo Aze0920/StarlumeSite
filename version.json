@@ -1,0 +1,8 @@
+{
+  "version": "1.0.0",
+  "name": "星澜云站",
+  "repo": "https://github.com/Aze0920/StarlumeSite",
+  "branch": "main",
+  "release_date": "2026-05-26",
+  "description": "初始版本：安装向导、前台、后台、GitHub 上传和后台自动更新。"
+}

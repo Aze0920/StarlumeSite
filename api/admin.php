@@ -26,6 +26,47 @@ if ($action === 'logout') {
     jmweb_json(['ok' => true, 'message' => '已退出登录']);
 }
 
+if ($action === 'check_update') {
+    jmweb_require_admin();
+
+    $context = stream_context_create([
+        'http' => [
+            'timeout' => 12,
+            'header' => "User-Agent: JmWeb-Updater\r\n",
+        ],
+    ]);
+    $raw = @file_get_contents(JMWEB_UPDATE_INFO_URL . '?t=' . time(), false, $context);
+    if ($raw === false || trim($raw) === '') {
+        jmweb_json([
+            'ok' => false,
+            'message' => '检查失败：无法读取远程版本信息，请确认服务器能访问 GitHub。',
+            'current_version' => JMWEB_VERSION,
+        ]);
+    }
+
+    $remote = json_decode($raw, true);
+    if (!is_array($remote) || empty($remote['version'])) {
+        jmweb_json([
+            'ok' => false,
+            'message' => '检查失败：远程版本信息格式不正确。',
+            'current_version' => JMWEB_VERSION,
+        ]);
+    }
+
+    $remoteVersion = (string) $remote['version'];
+    $hasUpdate = version_compare($remoteVersion, JMWEB_VERSION, '>');
+    jmweb_json([
+        'ok' => true,
+        'has_update' => $hasUpdate,
+        'message' => $hasUpdate ? '发现新版本，可以更新。' : '当前已经是最新版本。',
+        'current_version' => JMWEB_VERSION,
+        'remote_version' => $remoteVersion,
+        'release_date' => $remote['release_date'] ?? '',
+        'description' => $remote['description'] ?? '',
+        'repo' => $remote['repo'] ?? JMWEB_UPDATE_REPO,
+    ]);
+}
+
 if ($action === 'update') {
     jmweb_require_admin();
 

@@ -57,11 +57,25 @@
 
             <section class="admin-page hidden" id="page-update">
                 <div class="panel update-panel">
-                    <h2>系统一键更新</h2>
+                    <h2>系统更新</h2>
                     <p>更新源：<code><?= JMWEB_UPDATE_REPO ?></code></p>
+                    <p>版本信息：<code><?= JMWEB_UPDATE_INFO_URL ?></code></p>
                     <p>工作目录：<code><?= JMWEB_UPDATE_WORKDIR ?></code></p>
-                    <button id="updateBtn" class="btn primary">开始一键更新</button>
-                    <pre id="updateOutput" class="console-box">等待操作...</pre>
+                    <div class="update-status-card">
+                        <div>
+                            <span class="muted">当前版本</span>
+                            <strong>v<?= JMWEB_VERSION ?></strong>
+                        </div>
+                        <div>
+                            <span class="muted">远程版本</span>
+                            <strong id="remoteVersion">未检查</strong>
+                        </div>
+                    </div>
+                    <div class="hero-actions">
+                        <button id="checkUpdateBtn" class="btn primary">检查更新</button>
+                        <button id="updateBtn" class="btn ghost hidden">立即更新</button>
+                    </div>
+                    <pre id="updateOutput" class="console-box">请先点击“检查更新”。</pre>
                 </div>
             </section>
 
