@@ -275,6 +275,40 @@ try {
         return array('ok' => $ok, 'skipped' => false, 'message' => $ok ? '释放请求已执行。' : ('释放接口返回：' . (isset($json['msg']) ? $json['msg'] : $raw)));
     }
 
+    function jmweb_haozhu_blacklist_phone($settings, $host, $token, $projectId, $phone)
+    {
+        if ($phone === '' || $token === '') {
+            return array('ok' => false, 'message' => '拉黑参数为空。');
+        }
+        $apis = array();
+        $configured = isset($settings['haozhu_release_api']) ? trim((string) $settings['haozhu_release_api']) : '';
+        if ($configured !== '') {
+            $apis[] = $configured;
+        }
+        foreach (array('blockPhone', 'addBlack', 'blacklist', 'blackPhone', 'block') as $apiName) {
+            if (!in_array($apiName, $apis, true)) {
+                $apis[] = $apiName;
+            }
+        }
+        $lastMessage = '';
+        foreach ($apis as $apiName) {
+            list($url, $raw, $json) = jmweb_haozhu_json_request($host, array(
+                'api' => $apiName,
+                'token' => $token,
+                'sid' => $projectId,
+                'phone' => $phone,
+            ));
+            $ok = isset($json['code']) && (string) $json['code'] === '0';
+            $message = isset($json['msg']) ? (string) $json['msg'] : ($raw ? (string) $raw : '接口无响应');
+            jmweb_write_update_log('Haozhu blacklist try: api=' . $apiName . ', phone=' . $phone . ', ok=' . ($ok ? '1' : '0') . ', raw=' . $message);
+            if ($ok) {
+                return array('ok' => true, 'message' => '号码已拉黑：' . $apiName);
+            }
+            $lastMessage = $message;
+        }
+        return array('ok' => false, 'message' => '拉黑接口未成功：' . $lastMessage);
+    }
+
     function jmweb_haozhu_check_project($projectId)
     {
         $settings = jmweb_read_settings();
@@ -364,16 +398,19 @@ try {
     function jmweb_public_activation_payload($card, $state, $code, $sms)
     {
         $now = time();
+        $receivedAt = !empty($card['used_at']) ? (int) $card['used_at'] : 0;
         $expireAt = !empty($card['expires_at']) ? (int) $card['expires_at'] : ($now + 240);
         return array(
             'card_id' => (int) $card['id'],
             'card_no' => $card['card_no'],
             'phone' => isset($card['phone']) ? $card['phone'] : '',
             'state' => $state,
-            'code' => $code,
-            'sms' => $sms,
+            'code' => $code !== '' ? $code : (isset($card['sms_code']) ? $card['sms_code'] : ''),
+            'sms' => $sms !== '' ? $sms : (isset($card['sms_text']) ? $card['sms_text'] : ''),
             'expires_at' => $expireAt,
-            'remain_seconds' => max(0, $expireAt - $now),
+            'received_at' => $receivedAt,
+            'is_used' => isset($card['status']) && $card['status'] === 'used',
+            'remain_seconds' => $receivedAt > 0 ? 0 : max(0, $expireAt - $now),
         );
     }
 
@@ -411,7 +448,7 @@ try {
             jmweb_api_json(array('ok' => false, 'message' => '兑换码不存在。'));
         }
         if ($card['status'] === 'used') {
-            jmweb_api_json(array('ok' => false, 'message' => '兑换码已使用。'));
+            jmweb_api_json(array('ok' => true, 'used' => true, 'received' => true, 'message' => '兑换码已使用，以下为本次接码数据。', 'activation' => jmweb_public_activation_payload($card, '已激活', isset($card['sms_code']) ? $card['sms_code'] : '', isset($card['sms_text']) ? $card['sms_text'] : '')));
         }
         if ($card['status'] === 'disabled') {
             jmweb_api_json(array('ok' => false, 'message' => '兑换码已禁用。'));
@@ -459,6 +496,9 @@ try {
         if (!$card || empty($card['phone'])) {
             jmweb_api_json(array('ok' => false, 'message' => '没有可查询的手机号。'));
         }
+        if ($card['status'] === 'used') {
+            jmweb_api_json(array('ok' => true, 'received' => true, 'message' => '已接到验证码，以下为本次接码数据。', 'activation' => jmweb_public_activation_payload($card, '已激活', isset($card['sms_code']) ? $card['sms_code'] : '', isset($card['sms_text']) ? $card['sms_text'] : '')));
+        }
         if ((int) $card['expires_at'] <= time()) {
             jmweb_api_json(array('ok' => false, 'expired' => true, 'message' => '240 秒已到，可以更换号码。', 'activation' => jmweb_public_activation_payload($card, '已超时', '', '')));
         }
@@ -477,7 +517,10 @@ try {
             $card['status'] = 'used';
             $card['sms_code'] = $sms['code'];
             $card['sms_text'] = $sms['sms'];
-            jmweb_api_json(array('ok' => true, 'received' => true, 'message' => '已收到验证码，兑换券已消费。', 'activation' => jmweb_public_activation_payload($card, '已收到', $sms['code'], $sms['sms'])));
+            $card['used_at'] = $now;
+            $blacklist = jmweb_haozhu_blacklist_phone($settings, $host, $token, $card['project_id'], $card['phone']);
+            jmweb_write_update_log('Haozhu blacklist result: phone=' . $card['phone'] . ', message=' . $blacklist['message']);
+            jmweb_api_json(array('ok' => true, 'received' => true, 'message' => '已收到验证码，兑换券已消费。', 'activation' => jmweb_public_activation_payload($card, '已激活', $sms['code'], $sms['sms'])));
         }
         jmweb_write_update_log('Haozhu getMessage pending: project=' . $card['project_id'] . ', phone=' . $card['phone'] . ', host=' . $host . ', msg=' . $sms['message'] . ', raw=' . (isset($sms['raw']) ? $sms['raw'] : ''));
         jmweb_api_json(array('ok' => true, 'received' => false, 'message' => '暂未收到验证码。', 'activation' => jmweb_public_activation_payload($card, '等待验证码', '', '')));

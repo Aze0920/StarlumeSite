@@ -79,7 +79,7 @@ if ($path === '/' || $path === '/index.php') {
                     <strong id="activation-code">等待中</strong>
                 </div>
                 <div>
-                    <span class="label">到期时间</span>
+                    <span class="label" id="activation-time-label">接码时间</span>
                     <strong id="activation-expiry">-</strong>
                 </div>
             </div>

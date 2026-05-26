@@ -564,6 +564,9 @@ document.querySelectorAll('[data-card-batch]').forEach(function (button) {
         if (action === 'delete' && !confirm('确定删除选中的卡密吗？')) {
             return;
         }
+        if (action === 'disable' && !confirm('确定禁用选中的卡密吗？禁用后前台无法继续使用。')) {
+            return;
+        }
         button.disabled = true;
         setText(msg, '正在操作...');
         try {

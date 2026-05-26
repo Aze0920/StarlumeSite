@@ -1,8 +1,8 @@
 {
-  "version": "1.0.38",
+  "version": "1.0.39",
   "name": "豪猪接码",
   "repo": "https://github.com/Aze0920/StarlumeSite",
   "branch": "main",
   "release_date": "2026-05-27",
-  "description": "小更新：修复验证码轮询使用新 token 导致可能取不到码的问题，取号时保存同一会话 token，取码时优先使用取号 token，并记录取码接口返回日志。"
+  "description": "小更新：已接到验证码后停止倒计时并显示已激活，二次查询已使用卡密直接返回手机号和验证码数据，时间改为接码时间，收到验证码后尝试拉黑号码，后台禁用卡密入口更明确。"
 }

@@ -8,6 +8,7 @@
     var activationState = document.getElementById('activation-state');
     var activationCode = document.getElementById('activation-code');
     var activationExpiry = document.getElementById('activation-expiry');
+    var activationTimeLabel = document.getElementById('activation-time-label');
     var copyPhoneButton = document.getElementById('copy-phone-button');
     var refreshStatus = document.getElementById('refresh-status');
     var cancelActivation = document.getElementById('cancel-activation');
@@ -69,9 +70,24 @@
         if (phoneNumber) phoneNumber.textContent = data.phone || '-';
         if (activationState) activationState.textContent = data.state || '-';
         if (activationCode) activationCode.textContent = data.code || '等待中';
-        if (activationExpiry) activationExpiry.textContent = data.expires_at ? formatTimeBySeconds(data.expires_at) : '-';
+        if (data.is_used || data.received_at) {
+            if (activationTimeLabel) activationTimeLabel.textContent = '接码时间';
+            if (activationExpiry) activationExpiry.textContent = data.received_at ? formatTimeBySeconds(data.received_at) : '-';
+            if (cancelActivation) {
+                cancelActivation.disabled = true;
+                cancelActivation.textContent = '已激活';
+            }
+            if (cancelCountdown) cancelCountdown.textContent = '';
+            stopPolling();
+            if (countdownTimer) clearInterval(countdownTimer);
+            countdownTimer = null;
+        } else {
+            if (activationTimeLabel) activationTimeLabel.textContent = '到期时间';
+            if (activationExpiry) activationExpiry.textContent = data.expires_at ? formatTimeBySeconds(data.expires_at) : '-';
+            if (cancelActivation) cancelActivation.textContent = '取消激活';
+            startCountdown(data.expires_at || 0);
+        }
         if (copyPhoneButton) copyPhoneButton.disabled = !data.phone;
-        startCountdown(data.expires_at || 0);
     }
 
     function startCountdown(expiresAt) {
@@ -147,8 +163,8 @@
                     return;
                 }
                 renderActivation(result.activation || {});
-                setMessage(result.message || '已获取手机号，240 秒内持续获取验证码。', 'success');
-                startPolling();
+                setMessage(result.message || '已获取手机号，240 秒内持续获取验证码。', result.received || result.used ? 'success' : 'success');
+                if (!result.received && !result.used) startPolling();
             }).catch(function (error) {
                 setMessage('请求失败：' + error.message, 'error');
             }).finally(function () {
@@ -192,6 +208,7 @@
                     if (activationState) activationState.textContent = '已取消';
                     if (activationCode) activationCode.textContent = '等待中';
                     if (activationExpiry) activationExpiry.textContent = '-';
+                    if (activationTimeLabel) activationTimeLabel.textContent = '到期时间';
                     if (copyPhoneButton) copyPhoneButton.disabled = true;
                 }
             }).catch(function (error) {
