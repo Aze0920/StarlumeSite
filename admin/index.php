@@ -30,22 +30,26 @@ $jmwebSettings = jmweb_read_settings();
 <?php else: ?>
     <div class="admin-shell">
         <aside class="sidebar">
-            <a class="brand" href="../"><span class="brand-mark">S</span><span><?= htmlspecialchars($jmwebSettings['site_name'], ENT_QUOTES, 'UTF-8') ?></span></a>
-            <button class="side-link active" data-page="dashboard">控制台</button>
-            <button class="side-link" data-page="update">系统更新</button>
-            <button class="side-link" data-page="settings">基本设置</button>
-            <button id="logoutBtn" class="side-link danger">退出登录</button>
+            <a class="brand" href="../"><span class="brand-mark">S</span><span data-setting-display="site_name"><?= htmlspecialchars($jmwebSettings['site_name'], ENT_QUOTES, 'UTF-8') ?></span></a>
+            <div class="side-menu-main">
+                <button class="side-link active" data-page="dashboard">控制台</button>
+                <button class="side-link" data-page="settings">基本设置</button>
+            </div>
+            <div class="side-menu-bottom">
+                <button class="side-link" data-page="update">系统更新</button>
+                <button id="logoutBtn" class="side-link danger">退出登录</button>
+            </div>
         </aside>
         <main class="admin-main">
             <div class="admin-topbar">
                 <div><span class="eyebrow">Admin Console</span><h1>管理后台</h1></div>
-                <span class="status-pill">v<?= JMWEB_VERSION ?></span>
+                <button class="status-pill version-jump" type="button" data-page="update" title="点击进入系统更新">v<?= JMWEB_VERSION ?></button>
             </div>
 
             <section class="admin-page" id="page-dashboard">
                 <div class="admin-grid">
-                    <article class="stat"><strong><?= htmlspecialchars($jmwebSettings['site_name'], ENT_QUOTES, 'UTF-8') ?></strong><span>站点名称</span></article>
-                    <article class="stat"><strong><?= JMWEB_VERSION ?></strong><span>当前版本</span></article>
+                    <article class="stat"><strong data-setting-display="site_name"><?= htmlspecialchars($jmwebSettings['site_name'], ENT_QUOTES, 'UTF-8') ?></strong><span>站点名称</span></article>
+                    <article class="stat version-stat" data-page="update"><strong><?= JMWEB_VERSION ?></strong><span>当前版本，点击进入系统更新</span></article>
                     <article class="stat"><strong>正常</strong><span>运行状态</span></article>
                 </div>
                 <div class="panel">
@@ -88,7 +92,7 @@ $jmwebSettings = jmweb_read_settings();
                     <div>
                         <span class="eyebrow">Site Settings</span>
                         <h2>基本设置</h2>
-                        <p>管理前台展示文案、兑换时间和站点名称。保存后立即写入服务器本地配置。</p>
+                        <p>管理前台展示文案和站点名称。保存后立即写入服务器本地配置。</p>
                     </div>
                     <div class="settings-badge">本地配置</div>
                 </div>
@@ -104,20 +108,6 @@ $jmwebSettings = jmweb_read_settings();
                             </label>
                             <label class="setting-field">首页标题
                                 <input name="home_title" value="<?= htmlspecialchars($jmwebSettings['home_title'], ENT_QUOTES, 'UTF-8') ?>" maxlength="60">
-                            </label>
-                        </div>
-                    </div>
-                    <div class="settings-card">
-                        <div class="settings-card-head">
-                            <strong>时间规则</strong>
-                            <span>控制兑换展示到期时间和取消等待时间</span>
-                        </div>
-                        <div class="settings-grid two">
-                            <label class="setting-field">兑换有效期（分钟）
-                                <input name="exchange_expire_minutes" type="number" min="1" max="60" value="<?= (int) $jmwebSettings['exchange_expire_minutes'] ?>">
-                            </label>
-                            <label class="setting-field">取消等待时间（分钟）
-                                <input name="cancel_wait_minutes" type="number" min="0" max="30" value="<?= (int) $jmwebSettings['cancel_wait_minutes'] ?>">
                             </label>
                         </div>
                     </div>

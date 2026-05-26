@@ -1,8 +1,8 @@
 {
-  "version": "1.0.27",
+  "version": "1.0.28",
   "name": "豪猪接码",
   "repo": "https://github.com/Aze0920/StarlumeSite",
   "branch": "main",
   "release_date": "2026-05-26",
-  "description": "小更新：美化后台基本设置页面，修复保存按钮无反馈问题，并同步 public 静态资源。"
+  "description": "小更新：修复后台站点名实时同步，移除时间规则设置，版本号可点击进入系统更新。"
 }

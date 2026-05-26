@@ -83,7 +83,7 @@ if (loginForm) {
     });
 }
 
-document.querySelectorAll('.side-link[data-page]').forEach(function (button) {
+document.querySelectorAll('.side-link[data-page], [data-page].version-jump, .version-stat[data-page]').forEach(function (button) {
     button.addEventListener('click', function () {
         showAdminPage(button.getAttribute('data-page') || 'dashboard', true);
     });
@@ -168,6 +168,12 @@ function fillSettingsForm(settings) {
     Object.keys(settings).forEach(function (key) {
         if (form.elements[key]) form.elements[key].value = settings[key];
     });
+    if (settings.site_name) {
+        document.querySelectorAll('[data-setting-display="site_name"]').forEach(function (item) {
+            item.textContent = settings.site_name;
+        });
+        document.title = settings.site_name + ' 管理后台';
+    }
 }
 
 var settingsForm = document.getElementById('settingsForm');
