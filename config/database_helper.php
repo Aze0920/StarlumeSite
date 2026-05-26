@@ -43,8 +43,9 @@ function jmweb_check_admin($username, $password)
 
 function jmweb_table_has_column($pdo, $table, $column)
 {
-    $stmt = $pdo->prepare('SHOW COLUMNS FROM `' . str_replace('`', '``', $table) . '` LIKE ?');
-    $stmt->execute(array($column));
+    $table = str_replace('`', '``', $table);
+    $column = str_replace("'", "''", $column);
+    $stmt = $pdo->query("SHOW COLUMNS FROM `{$table}` LIKE '{$column}'");
     return (bool) $stmt->fetch();
 }
 
