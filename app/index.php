@@ -12,7 +12,10 @@ header('Referrer-Policy: strict-origin-when-cross-origin');
 
 require_once dirname(__DIR__) . '/config/app.php';
 
-$path = parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH) ?: '/';
+$path = parse_url(isset($_SERVER['REQUEST_URI']) ? $_SERVER['REQUEST_URI'] : '/', PHP_URL_PATH);
+if (!$path) {
+    $path = '/';
+}
 
 if (preg_match('/\.(css|js|png|jpg|jpeg|gif|ico|woff|woff2|ttf|map|svg)$/i', $path)) {
     return false;

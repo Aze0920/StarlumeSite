@@ -9,18 +9,18 @@ $message = '';
 $messageType = 'danger';
 $success = false;
 
-function installer_value(string $key, string $default = ''): string
+function installer_value($key, $default = '')
 {
-    return htmlspecialchars($_POST[$key] ?? $default, ENT_QUOTES, 'UTF-8');
+    return htmlspecialchars(isset($_POST[$key]) ? $_POST[$key] : $default, ENT_QUOTES, 'UTF-8');
 }
 
-function installer_write_config(array $config): bool
+function installer_write_config($config)
 {
     $content = "<?php\n/**\n * 数据库配置\n * 本文件由安装程序生成。\n */\nreturn " . var_export($config, true) . ";\n";
     return file_put_contents(dirname(__DIR__) . '/config/database.php', $content, LOCK_EX) !== false;
 }
 
-function installer_create_lock(): bool
+function installer_create_lock()
 {
     $dataPath = dirname(__DIR__) . '/data';
     if (!is_dir($dataPath)) {
@@ -29,7 +29,7 @@ function installer_create_lock(): bool
     return file_put_contents($dataPath . '/install.lock', 'installed_at=' . date('c') . PHP_EOL, LOCK_EX) !== false;
 }
 
-function installer_init_database(array $config, string $adminUser, string $adminPassword, string $adminEmail): void
+function installer_init_database($config, $adminUser, $adminPassword, $adminEmail)
 {
     if (!extension_loaded('pdo_mysql')) {
         throw new RuntimeException('当前 PHP 未启用 pdo_mysql 扩展，请在宝塔 PHP 设置里开启。');
@@ -37,11 +37,11 @@ function installer_init_database(array $config, string $adminUser, string $admin
 
     $charset = $config['charset'];
     $dsnWithoutDb = "mysql:host={$config['host']};port={$config['port']};charset={$charset}";
-    $pdo = new PDO($dsnWithoutDb, $config['username'], $config['password'], [
+    $pdo = new PDO($dsnWithoutDb, $config['username'], $config['password'], array(
         PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
         PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
         PDO::ATTR_EMULATE_PREPARES => false,
-    ]);
+    ));
 
     $dbName = str_replace('`', '``', $config['database']);
     $pdo->exec("CREATE DATABASE IF NOT EXISTS `{$dbName}` DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci");
@@ -75,14 +75,14 @@ function installer_init_database(array $config, string $adminUser, string $admin
 }
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && !$installed) {
-    $host = trim($_POST['host'] ?? '127.0.0.1');
-    $port = (int) ($_POST['port'] ?? 3306);
-    $database = trim($_POST['database'] ?? 'starlume');
-    $username = trim($_POST['username'] ?? 'root');
-    $password = (string) ($_POST['password'] ?? '');
-    $adminUser = preg_replace('/[^a-zA-Z0-9_]/', '', $_POST['admin_user'] ?? 'admin');
-    $adminPassword = (string) ($_POST['admin_password'] ?? '');
-    $adminEmail = filter_var(trim($_POST['admin_email'] ?? 'admin@starlume.local'), FILTER_SANITIZE_EMAIL);
+    $host = trim(isset($_POST['host']) ? $_POST['host'] : '127.0.0.1');
+    $port = (int) (isset($_POST['port']) ? $_POST['port'] : 3306);
+    $database = trim(isset($_POST['database']) ? $_POST['database'] : 'starlume');
+    $username = trim(isset($_POST['username']) ? $_POST['username'] : 'root');
+    $password = (string) (isset($_POST['password']) ? $_POST['password'] : '');
+    $adminUser = preg_replace('/[^a-zA-Z0-9_]/', '', isset($_POST['admin_user']) ? $_POST['admin_user'] : 'admin');
+    $adminPassword = (string) (isset($_POST['admin_password']) ? $_POST['admin_password'] : '');
+    $adminEmail = filter_var(trim(isset($_POST['admin_email']) ? $_POST['admin_email'] : 'admin@starlume.local'), FILTER_SANITIZE_EMAIL);
 
     if ($host === '' || $database === '' || $username === '' || $port <= 0) {
         $message = '请填写完整的数据库连接信息。';
@@ -95,14 +95,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !$installed) {
     } elseif (!filter_var($adminEmail, FILTER_VALIDATE_EMAIL)) {
         $message = '请填写正确的管理员邮箱。';
     } else {
-        $config = [
+        $config = array(
             'host' => $host,
             'port' => $port,
             'database' => $database,
             'username' => $username,
             'password' => $password,
             'charset' => 'utf8mb4',
-        ];
+        );
 
         try {
             installer_init_database($config, $adminUser, $adminPassword, $adminEmail);
@@ -118,7 +118,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !$installed) {
             $messageType = 'success';
             $message = '安装完成！现在可以进入网站后台。';
             $installed = true;
-        } catch (Throwable $e) {
+        } catch (Exception $e) {
             $message = '安装失败：' . $e->getMessage();
         }
     }

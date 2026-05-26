@@ -3,7 +3,16 @@ async function postAdmin(action, payload = {}) {
     form.append('action', action);
     Object.entries(payload).forEach(([key, value]) => form.append(key, value));
     const response = await fetch('../api/admin.php', { method: 'POST', body: form });
-    return response.json();
+    const text = await response.text();
+    try {
+        return JSON.parse(text);
+    } catch (error) {
+        const preview = text.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 260);
+        return {
+            ok: false,
+            message: preview ? `服务器返回的不是 JSON：${preview}` : '服务器返回为空，请检查 PHP 错误日志。',
+        };
+    }
 }
 
 const loginForm = document.getElementById('loginForm');

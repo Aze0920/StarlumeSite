@@ -3,12 +3,12 @@ require_once __DIR__ . '/config/app.php';
 
 set_time_limit(300);
 
-function line_out(string $message): void
+function line_out($message)
 {
     echo '[' . date('H:i:s') . '] ' . $message . PHP_EOL;
 }
 
-function run_cmd(string $cmd, ?string $cwd = null): int
+function run_cmd($cmd, $cwd = null)
 {
     $prefix = '';
     if ($cwd) {
@@ -20,21 +20,21 @@ function run_cmd(string $cmd, ?string $cwd = null): int
     return (int) $code;
 }
 
-function path_starts_with(string $path, string $prefix): bool
+function path_starts_with($path, $prefix)
 {
     return substr($path, 0, strlen($prefix)) === $prefix;
 }
 
-function copy_update_files(string $source, string $target): void
+function copy_update_files($source, $target)
 {
-    $skip = ['.git', 'data', 'logs'];
-    $sourceReal = realpath($source) ?: $source;
-    $targetReal = realpath($target) ?: $target;
-    $items = scandir($source) ?: [];
+    $skip = array('.git', 'data', 'logs');
+    $sourceReal = realpath($source) ? realpath($source) : $source;
+    $targetReal = realpath($target) ? realpath($target) : $target;
+    $items = scandir($source) ? scandir($source) : array();
     foreach ($items as $item) {
         $from = $source . DIRECTORY_SEPARATOR . $item;
         $to = $target . DIRECTORY_SEPARATOR . $item;
-        $fromReal = realpath($from) ?: $from;
+        $fromReal = realpath($from) ? realpath($from) : $from;
         if ($item === '.' || $item === '..' || in_array($item, $skip, true) || $sourceReal === $targetReal || path_starts_with($fromReal, $targetReal . DIRECTORY_SEPARATOR)) {
             continue;
         }
