@@ -1,8 +1,8 @@
 {
-  "version": "1.0.35",
+  "version": "1.0.36",
   "name": "豪猪接码",
   "repo": "https://github.com/Aze0920/StarlumeSite",
   "branch": "main",
   "release_date": "2026-05-27",
-  "description": "小更新：后台卡密详情显示手机号和验证码，隐藏创建时间，支持拖动选择卡密，并新增复制选中卡密按钮。"
+  "description": "紧急修复：恢复 public/admin 与 public/api 入口为跳转壳文件，避免 public 目录下错误引用 config 导致后台打不开。"
 }
