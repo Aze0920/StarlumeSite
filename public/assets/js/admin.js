@@ -236,6 +236,36 @@ var cardState = {
     pages: 1,
     limit: 10,
 };
+var cardCacheKey = 'jmweb_card_filters';
+
+function saveCardFilters() {
+    var limitSelect = document.getElementById('cardLimitSelect');
+    var keywordInput = document.getElementById('cardKeyword');
+    try {
+        localStorage.setItem(cardCacheKey, JSON.stringify({
+            statuses: getCardStatuses(),
+            limit: limitSelect ? limitSelect.value : '10',
+            keyword: keywordInput ? keywordInput.value : '',
+        }));
+    } catch (e) {}
+}
+
+function restoreCardFilters() {
+    var raw = '';
+    try { raw = localStorage.getItem(cardCacheKey) || ''; } catch (e) { raw = ''; }
+    if (!raw) return;
+    try {
+        var data = JSON.parse(raw);
+        var savedStatuses = Array.isArray(data.statuses) ? data.statuses : [];
+        document.querySelectorAll('input[name="card_status"]').forEach(function (item) {
+            item.checked = savedStatuses.indexOf(item.value) !== -1;
+        });
+        var limitSelect = document.getElementById('cardLimitSelect');
+        if (limitSelect && data.limit) limitSelect.value = data.limit;
+        var keywordInput = document.getElementById('cardKeyword');
+        if (keywordInput && typeof data.keyword === 'string') keywordInput.value = data.keyword;
+    } catch (e) {}
+}
 
 function getCardStatuses() {
     var statuses = [];
@@ -327,6 +357,7 @@ async function loadCards(resetPage) {
 
 var cardCreateForm = document.getElementById('cardCreateForm');
 if (cardCreateForm) {
+    restoreCardFilters();
     loadCards(true);
     cardCreateForm.addEventListener('submit', async function (event) {
         event.preventDefault();
@@ -359,13 +390,13 @@ if (cardCreateForm) {
 }
 
 var cardLimitSelect = document.getElementById('cardLimitSelect');
-if (cardLimitSelect) cardLimitSelect.addEventListener('change', function () { loadCards(true); });
+if (cardLimitSelect) cardLimitSelect.addEventListener('change', function () { saveCardFilters(); loadCards(true); });
 var cardRefreshBtn = document.getElementById('cardRefreshBtn');
-if (cardRefreshBtn) cardRefreshBtn.addEventListener('click', function () { loadCards(true); });
+if (cardRefreshBtn) cardRefreshBtn.addEventListener('click', function () { saveCardFilters(); loadCards(true); });
 var cardKeyword = document.getElementById('cardKeyword');
-if (cardKeyword) cardKeyword.addEventListener('keydown', function (event) { if (event.key === 'Enter') loadCards(true); });
+if (cardKeyword) cardKeyword.addEventListener('keydown', function (event) { if (event.key === 'Enter') { saveCardFilters(); loadCards(true); } });
 document.querySelectorAll('input[name="card_status"]').forEach(function (item) {
-    item.addEventListener('change', function () { loadCards(true); });
+    item.addEventListener('change', function () { saveCardFilters(); loadCards(true); });
 });
 var cardPrevPage = document.getElementById('cardPrevPage');
 if (cardPrevPage) cardPrevPage.addEventListener('click', function () {
