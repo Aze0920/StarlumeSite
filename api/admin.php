@@ -493,10 +493,13 @@ try {
         $now = time();
         $receivedAt = !empty($card['used_at']) ? (int) $card['used_at'] : 0;
         $expireAt = !empty($card['expires_at']) ? (int) $card['expires_at'] : ($now + 240);
+        $phoneParts = jmweb_phone_public_parts(isset($card['phone']) ? $card['phone'] : '');
         return array(
             'card_id' => (int) $card['id'],
             'card_no' => $card['card_no'],
-            'phone' => jmweb_phone_without_country_code(isset($card['phone']) ? $card['phone'] : ''),
+            'phone' => $phoneParts['phone'],
+            'phone_country' => $phoneParts['phone_country'],
+            'phone_display' => $phoneParts['phone_display'],
             'state' => $state,
             'code' => $code !== '' ? $code : (isset($card['sms_code']) ? $card['sms_code'] : ''),
             'sms' => $sms !== '' ? $sms : (isset($card['sms_text']) ? $card['sms_text'] : ''),

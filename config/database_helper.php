@@ -179,3 +179,19 @@ function jmweb_phone_without_country_code($phone)
     }
     return $digits;
 }
+
+function jmweb_phone_public_parts($phone)
+{
+    $phone = trim((string) $phone);
+    if ($phone === '') {
+        return array('phone' => '', 'phone_country' => '', 'phone_display' => '');
+    }
+    $countryCode = jmweb_detect_phone_country_code($phone);
+    $local = jmweb_phone_without_country_code($phone);
+    $display = $countryCode !== '' ? ('+' . $countryCode . ' ' . $local) : $local;
+    return array(
+        'phone' => $local,
+        'phone_country' => $countryCode,
+        'phone_display' => $display,
+    );
+}

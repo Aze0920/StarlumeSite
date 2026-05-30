@@ -1,8 +1,8 @@
 {
-  "version": "1.0.49",
+  "version": "1.0.50",
   "name": "豪猪接码",
   "repo": "https://github.com/Aze0920/StarlumeSite",
   "branch": "main",
   "release_date": "2026-05-30",
-  "description": "前台手机号自动识别并去除国际区号，展示和复制均不含 +66 等区号；后台仍保留完整号码用于接码。"
+  "description": "前台手机号展示为 +区号 本地号码，复制时仅复制不含区号的本地号码。"
 }

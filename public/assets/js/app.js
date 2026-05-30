@@ -77,11 +77,33 @@
         return digits;
     }
 
+    function detectPhoneCountryCode(value) {
+        var digits = phoneDigitsOnly(value);
+        if (!digits) return '';
+        for (var i = 0; i < phoneCountryCodes.length; i++) {
+            var code = phoneCountryCodes[i];
+            if (digits.indexOf(code) === 0) {
+                var local = digits.slice(code.length);
+                if (local.length >= 7 && local.length <= 15) return code;
+            }
+        }
+        return '';
+    }
+
+    function formatPhoneDisplay(value) {
+        var local = phoneWithoutCountryCode(value);
+        if (!local) return '';
+        var country = detectPhoneCountryCode(value);
+        return country ? ('+' + country + ' ' + local) : local;
+    }
+
     function renderActivation(data) {
         currentActivation = data;
         if (activationPanel) activationPanel.classList.remove('hidden');
-        var displayPhone = data.phone ? phoneWithoutCountryCode(data.phone) : '';
+        var copyPhone = data.phone || phoneWithoutCountryCode(data.phone_display || '');
+        var displayPhone = data.phone_display || formatPhoneDisplay(copyPhone);
         if (phoneNumber) phoneNumber.textContent = displayPhone || '-';
+        currentActivation.phone = copyPhone;
         if (activationState) activationState.textContent = data.state || '-';
         if (activationCode) activationCode.textContent = data.code || '等待中';
         if (data.is_used || data.received_at) {
@@ -101,7 +123,7 @@
             if (cancelActivation) cancelActivation.textContent = '取消激活';
             startCountdown(data.expires_at || 0);
         }
-        if (copyPhoneButton) copyPhoneButton.disabled = !displayPhone;
+        if (copyPhoneButton) copyPhoneButton.disabled = !copyPhone;
     }
 
     function stopPolling() {
@@ -187,7 +209,7 @@
 
     if (copyPhoneButton) {
         copyPhoneButton.addEventListener('click', function () {
-            var value = phoneNumber ? phoneWithoutCountryCode(phoneNumber.textContent.trim()) : '';
+            var value = currentActivation && currentActivation.phone ? currentActivation.phone : phoneWithoutCountryCode(phoneNumber ? phoneNumber.textContent.trim() : '');
             if (!value || value === '-') return;
             if (navigator.clipboard && navigator.clipboard.writeText) {
                 navigator.clipboard.writeText(value).then(function () {
