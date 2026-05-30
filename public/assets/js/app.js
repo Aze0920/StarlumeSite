@@ -41,25 +41,6 @@
         redeemMessage.className = 'message' + (type ? ' ' + type : '');
     }
 
-    function formatVoucher(value) {
-        var clean = value.replace(/[^a-zA-Z0-9]/g, '').toUpperCase();
-        var prefix = 'HZ';
-        if (clean.indexOf('LB') === 0) {
-            prefix = 'LB';
-            clean = clean.slice(2);
-        } else if (clean.indexOf('HZ') === 0) {
-            prefix = 'HZ';
-            clean = clean.slice(2);
-        }
-        clean = clean.slice(0, 32);
-        var project = clean.length > 12 ? clean.slice(0, clean.length - 12) : '';
-        var tail = clean.slice(Math.max(0, clean.length - 12));
-        var groups = [];
-        if (project) groups.push(project);
-        tail.replace(/.{1,4}/g, function (part) { groups.push(part); return part; });
-        return prefix + (groups.length ? '-' + groups.join('-') : '');
-    }
-
     function formatTimeBySeconds(timestamp) {
         var date = new Date(timestamp * 1000);
         var pad = function (n) { return n < 10 ? '0' + n : String(n); };
@@ -140,23 +121,12 @@
         pollTimer = setInterval(function () { pollCode(false); }, 5000);
     }
 
-    if (voucherInput) {
-        voucherInput.addEventListener('input', function () {
-            voucherInput.value = formatVoucher(voucherInput.value);
-        });
-    }
-
     if (redeemForm) {
         redeemForm.addEventListener('submit', function (event) {
             event.preventDefault();
-            var code = voucherInput ? formatVoucher(voucherInput.value.trim()) : '';
-            if (voucherInput) voucherInput.value = code;
+            var code = voucherInput ? voucherInput.value.trim() : '';
             if (!code) {
                 setMessage('请输入兑换码。', 'error');
-                return;
-            }
-            if (code.replace(/-/g, '').length < 15) {
-                setMessage('兑换码格式不正确。', 'error');
                 return;
             }
             if (redeemSubmit) {

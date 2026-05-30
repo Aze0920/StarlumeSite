@@ -1,8 +1,8 @@
 {
-  "version": "1.0.46",
+  "version": "1.0.47",
   "name": "豪猪接码",
   "repo": "https://github.com/Aze0920/StarlumeSite",
   "branch": "main",
   "release_date": "2026-05-30",
-  "description": "修复前台兑换码格式化：支持 LB- 鲁班卡密与 HZ- 豪猪卡密在同一页面兑换，不再错误改成 HZ-LB 前缀。"
+  "description": "移除前台兑换码自动格式化和强制 HZ 前缀，用户输入什么就提交什么，校验交给后台。"
 }
