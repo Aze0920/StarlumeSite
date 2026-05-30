@@ -1,8 +1,8 @@
 {
-  "version": "1.0.45",
+  "version": "1.0.46",
   "name": "豪猪接码",
   "repo": "https://github.com/Aze0920/StarlumeSite",
   "branch": "main",
   "release_date": "2026-05-30",
-  "description": "生成卡密后弹出操作提示：蓝色复制到剪贴板、绿色导出 txt、白色取消；接口返回全部新生成卡密。"
+  "description": "修复前台兑换码格式化：支持 LB- 鲁班卡密与 HZ- 豪猪卡密在同一页面兑换，不再错误改成 HZ-LB 前缀。"
 }

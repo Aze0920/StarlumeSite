@@ -43,14 +43,21 @@
 
     function formatVoucher(value) {
         var clean = value.replace(/[^a-zA-Z0-9]/g, '').toUpperCase();
-        if (clean.indexOf('HZ') === 0) clean = clean.slice(2);
-        clean = clean.slice(0, 22);
-        var project = clean.slice(0, Math.max(0, clean.length - 12));
+        var prefix = 'HZ';
+        if (clean.indexOf('LB') === 0) {
+            prefix = 'LB';
+            clean = clean.slice(2);
+        } else if (clean.indexOf('HZ') === 0) {
+            prefix = 'HZ';
+            clean = clean.slice(2);
+        }
+        clean = clean.slice(0, 32);
+        var project = clean.length > 12 ? clean.slice(0, clean.length - 12) : '';
         var tail = clean.slice(Math.max(0, clean.length - 12));
         var groups = [];
         if (project) groups.push(project);
         tail.replace(/.{1,4}/g, function (part) { groups.push(part); return part; });
-        return 'HZ' + (groups.length ? '-' + groups.join('-') : '');
+        return prefix + (groups.length ? '-' + groups.join('-') : '');
     }
 
     function formatTimeBySeconds(timestamp) {
@@ -142,12 +149,13 @@
     if (redeemForm) {
         redeemForm.addEventListener('submit', function (event) {
             event.preventDefault();
-            var code = voucherInput ? voucherInput.value.trim() : '';
+            var code = voucherInput ? formatVoucher(voucherInput.value.trim()) : '';
+            if (voucherInput) voucherInput.value = code;
             if (!code) {
                 setMessage('请输入兑换码。', 'error');
                 return;
             }
-            if (code.replace(/-/g, '').length < 12) {
+            if (code.replace(/-/g, '').length < 15) {
                 setMessage('兑换码格式不正确。', 'error');
                 return;
             }
