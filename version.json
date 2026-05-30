@@ -1,8 +1,8 @@
 {
-  "version": "1.0.42",
+  "version": "1.0.43",
   "name": "豪猪接码",
   "repo": "https://github.com/Aze0920/StarlumeSite",
   "branch": "main",
   "release_date": "2026-05-30",
-  "description": "后台配置更新：豪猪管理页的配置默认隐藏，点击配置按钮展开；移除其他平台预留、添加其他平台、释放接口配置和多余提示文案。"
+  "description": "新增鲁班接码平台：后台独立管理页、APIKEY 配置、service_id 检测、LB- 前缀独立制卡，前台兑换自动走鲁班 getNumber/getSms/setStatus 接口。"
 }
