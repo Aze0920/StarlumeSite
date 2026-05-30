@@ -47,15 +47,41 @@
         return date.getFullYear() + '/' + pad(date.getMonth() + 1) + '/' + pad(date.getDate()) + ' ' + pad(date.getHours()) + ':' + pad(date.getMinutes()) + ':' + pad(date.getSeconds());
     }
 
-    function stopPolling() {
-        if (pollTimer) clearInterval(pollTimer);
-        pollTimer = null;
+    function phoneDigitsOnly(value) {
+        var digits = String(value == null ? '' : value).replace(/[^\d+]/g, '');
+        if (digits.indexOf('+') === 0) digits = digits.slice(1);
+        else if (digits.indexOf('00') === 0) digits = digits.slice(2);
+        return digits.replace(/\D/g, '');
+    }
+
+    var phoneCountryCodes = [
+        '880', '886', '853', '852', '855', '856', '850', '976', '977', '975', '974', '973', '972', '971', '968', '967', '966', '965', '964', '963', '962', '961', '960',
+        '423', '421', '420', '389', '387', '386', '385', '383', '382', '381', '380', '378', '377', '376', '375', '374', '373', '372', '371', '370', '359', '358', '357', '356', '355', '354', '353', '352', '351', '350',
+        '998', '996', '995', '994', '993', '992',
+        '687', '686', '685', '684', '683', '682', '681', '680', '679', '678', '677', '676', '675', '674', '673', '672', '670', '692', '691', '690', '689', '688',
+        '599', '598', '597', '596', '595', '594', '593', '592', '591', '590', '509', '508', '507', '506', '505', '504', '503', '502', '501', '500',
+        '91', '90', '86', '84', '82', '81', '66', '65', '64', '63', '62', '61', '60', '58', '57', '56', '55', '54', '53', '52', '51', '49', '48', '47', '46', '45', '44', '43', '41', '40', '39', '36', '34', '33', '32', '31', '30', '27', '20',
+        '7', '1'
+    ].sort(function (a, b) { return b.length - a.length; });
+
+    function phoneWithoutCountryCode(value) {
+        var digits = phoneDigitsOnly(value);
+        if (!digits) return '';
+        for (var i = 0; i < phoneCountryCodes.length; i++) {
+            var code = phoneCountryCodes[i];
+            if (digits.indexOf(code) === 0) {
+                var local = digits.slice(code.length);
+                if (local.length >= 7 && local.length <= 15) return local;
+            }
+        }
+        return digits;
     }
 
     function renderActivation(data) {
         currentActivation = data;
         if (activationPanel) activationPanel.classList.remove('hidden');
-        if (phoneNumber) phoneNumber.textContent = data.phone || '-';
+        var displayPhone = data.phone ? phoneWithoutCountryCode(data.phone) : '';
+        if (phoneNumber) phoneNumber.textContent = displayPhone || '-';
         if (activationState) activationState.textContent = data.state || '-';
         if (activationCode) activationCode.textContent = data.code || '等待中';
         if (data.is_used || data.received_at) {
@@ -75,7 +101,12 @@
             if (cancelActivation) cancelActivation.textContent = '取消激活';
             startCountdown(data.expires_at || 0);
         }
-        if (copyPhoneButton) copyPhoneButton.disabled = !data.phone;
+        if (copyPhoneButton) copyPhoneButton.disabled = !displayPhone;
+    }
+
+    function stopPolling() {
+        if (pollTimer) clearInterval(pollTimer);
+        pollTimer = null;
     }
 
     function startCountdown(expiresAt) {
@@ -156,7 +187,7 @@
 
     if (copyPhoneButton) {
         copyPhoneButton.addEventListener('click', function () {
-            var value = phoneNumber ? phoneNumber.textContent.trim() : '';
+            var value = phoneNumber ? phoneWithoutCountryCode(phoneNumber.textContent.trim()) : '';
             if (!value || value === '-') return;
             if (navigator.clipboard && navigator.clipboard.writeText) {
                 navigator.clipboard.writeText(value).then(function () {

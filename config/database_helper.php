@@ -113,3 +113,69 @@ function jmweb_card_status_label($status)
     }
     return '可用';
 }
+
+function jmweb_phone_digits_only($phone)
+{
+    $phone = trim((string) $phone);
+    if ($phone === '') {
+        return '';
+    }
+    $phone = preg_replace('/[^\d+]/', '', $phone);
+    if (strpos($phone, '+') === 0) {
+        $phone = substr($phone, 1);
+    } elseif (strpos($phone, '00') === 0) {
+        $phone = substr($phone, 2);
+    }
+    return preg_replace('/\D/', '', $phone);
+}
+
+function jmweb_phone_country_codes()
+{
+    static $codes = null;
+    if ($codes !== null) {
+        return $codes;
+    }
+    $codes = array(
+        '880', '886', '853', '852', '855', '856', '850', '976', '977', '975', '974', '973', '972', '971', '968', '967', '966', '965', '964', '963', '962', '961', '960',
+        '423', '421', '420', '389', '387', '386', '385', '383', '382', '381', '380', '378', '377', '376', '375', '374', '373', '372', '371', '370', '359', '358', '357', '356', '355', '354', '353', '352', '351', '350',
+        '998', '996', '995', '994', '993', '992',
+        '687', '686', '685', '684', '683', '682', '681', '680', '679', '678', '677', '676', '675', '674', '673', '672', '670', '692', '691', '690', '689', '688',
+        '599', '598', '597', '596', '595', '594', '593', '592', '591', '590', '509', '508', '507', '506', '505', '504', '503', '502', '501', '500',
+        '91', '90', '86', '84', '82', '81', '66', '65', '64', '63', '62', '61', '60', '58', '57', '56', '55', '54', '53', '52', '51', '49', '48', '47', '46', '45', '44', '43', '41', '40', '39', '36', '34', '33', '32', '31', '30', '27', '20',
+        '7', '1',
+    );
+    usort($codes, function ($a, $b) {
+        return strlen($b) - strlen($a);
+    });
+    return $codes;
+}
+
+function jmweb_detect_phone_country_code($phone)
+{
+    $digits = jmweb_phone_digits_only($phone);
+    if ($digits === '') {
+        return '';
+    }
+    foreach (jmweb_phone_country_codes() as $code) {
+        if (strpos($digits, $code) === 0) {
+            $local = substr($digits, strlen($code));
+            if (strlen($local) >= 7 && strlen($local) <= 15) {
+                return $code;
+            }
+        }
+    }
+    return '';
+}
+
+function jmweb_phone_without_country_code($phone)
+{
+    $digits = jmweb_phone_digits_only($phone);
+    if ($digits === '') {
+        return '';
+    }
+    $countryCode = jmweb_detect_phone_country_code($phone);
+    if ($countryCode !== '') {
+        return substr($digits, strlen($countryCode));
+    }
+    return $digits;
+}

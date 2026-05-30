@@ -496,7 +496,7 @@ try {
         return array(
             'card_id' => (int) $card['id'],
             'card_no' => $card['card_no'],
-            'phone' => isset($card['phone']) ? $card['phone'] : '',
+            'phone' => jmweb_phone_without_country_code(isset($card['phone']) ? $card['phone'] : ''),
             'state' => $state,
             'code' => $code !== '' ? $code : (isset($card['sms_code']) ? $card['sms_code'] : ''),
             'sms' => $sms !== '' ? $sms : (isset($card['sms_text']) ? $card['sms_text'] : ''),
