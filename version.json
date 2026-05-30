@@ -1,8 +1,8 @@
 {
-  "version": "1.0.47",
+  "version": "1.0.48",
   "name": "豪猪接码",
   "repo": "https://github.com/Aze0920/StarlumeSite",
   "branch": "main",
   "release_date": "2026-05-30",
-  "description": "移除前台兑换码自动格式化和强制 HZ 前缀，用户输入什么就提交什么，校验交给后台。"
+  "description": "前台接码状态区加宽手机号卡片，手机号单行完整显示。"
 }

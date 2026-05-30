@@ -58,7 +58,7 @@ if ($path === '/' || $path === '/index.php') {
 
         <section id="activation-panel" class="redeem-panel hidden">
             <div class="status-grid">
-                <div>
+                <div class="status-cell-phone">
                     <span class="label">手机号</span>
                     <span class="phone-line">
                         <strong id="phone-number">-</strong>
