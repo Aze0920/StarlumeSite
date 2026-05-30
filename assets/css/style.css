@@ -191,6 +191,18 @@ code { padding: 3px 7px; border-radius: 8px; background: #eef2ff; color: #4338ca
 .provider-tab.active { color: #4f46e5; border-color: rgba(99, 91, 255, .32); background: #eef2ff; }
 .provider-tab:disabled { cursor: not-allowed; opacity: .58; }
 .provider-settings-actions { display: grid; gap: 12px; margin-top: 2px; }
+.platform-settings-card { display: grid; gap: 16px; }
+.platform-tabs { display: flex; gap: 10px; flex-wrap: wrap; }
+.platform-tab { border: 1px solid #d7def0; border-radius: 999px; padding: 10px 16px; background: #f8fafc; color: #344054; font-weight: 900; }
+.platform-tab.active { color: #4f46e5; border-color: rgba(99, 91, 255, .32); background: #eef2ff; box-shadow: 0 10px 24px rgba(99, 91, 255, .10); }
+.platform-tab:disabled { cursor: not-allowed; opacity: .58; }
+.platform-config-panel { padding: 18px; border: 1px solid #e7ebf5; border-radius: 22px; background: linear-gradient(180deg, #ffffff, #fbfcff); }
+.platform-config-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; margin-bottom: 16px; }
+.platform-config-head strong { display: block; font-size: 1.18rem; letter-spacing: -.03em; }
+.platform-config-head p { margin: 6px 0 0; color: var(--muted); line-height: 1.7; }
+.platform-add-placeholder { display: grid; gap: 6px; padding: 16px 18px; border: 1px dashed #c7d2fe; border-radius: 20px; background: #f8fafc; color: #475467; }
+.platform-add-placeholder strong { color: #1f2937; }
+.platform-add-placeholder span { color: var(--muted); line-height: 1.7; }
 .create-code-panel { margin-top: 18px; }
 .card-list-toolbar, .card-filter-row, .card-batch-row, .card-pager { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
 .card-list-toolbar { margin-bottom: 14px; padding-bottom: 14px; border-bottom: 1px solid #eef2f7; }

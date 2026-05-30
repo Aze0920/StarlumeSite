@@ -176,7 +176,7 @@ function fillSettingsForm(settings) {
             if (!form.elements[key]) return;
             if (key === 'haozhu_api_password') {
                 form.elements[key].value = '';
-                form.elements[key].placeholder = settings.haozhu_api_password_saved ? '已保存，留空不修改' : '请输入 API 密码';
+                form.elements[key].placeholder = settings.haozhu_api_password_saved ? '已保存，留空不修改' : '请输入豪猪 API 密钥或密码';
                 return;
             }
             form.elements[key].value = settings[key];

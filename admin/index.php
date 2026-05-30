@@ -98,40 +98,50 @@ $jmwebSettings = jmweb_read_settings();
                     <div class="settings-badge">项目管理</div>
                 </div>
                 <form id="haozhuSettingsForm" class="settings-form modern-settings-form">
-                    <div class="settings-card">
+                    <div class="settings-card platform-settings-card">
                         <div class="settings-card-head">
-                            <strong>豪猪接口配置</strong>
-                            <span>用于检测项目ID、取号和接收验证码</span>
+                            <strong>接码平台配置</strong>
+                            <span>把不同接码平台的账号、密钥和接口统一放在这里</span>
                         </div>
-                        <div class="settings-grid two">
-                            <label class="setting-field">API 账号
-                                <input name="haozhu_api_account" value="<?= htmlspecialchars($jmwebSettings['haozhu_api_account'], ENT_QUOTES, 'UTF-8') ?>" maxlength="160" placeholder="请输入 API 账号">
-                            </label>
-                            <label class="setting-field">API 密码
-                                <input name="haozhu_api_password" type="password" value="" maxlength="160" placeholder="<?= !empty($jmwebSettings['haozhu_api_password']) ? '已保存，留空不修改' : '请输入 API 密码' ?>" autocomplete="new-password">
-                            </label>
+                        <div class="platform-tabs">
+                            <button class="platform-tab active" type="button">豪猪</button>
+                            <button class="platform-tab disabled" type="button" disabled>添加其他平台</button>
                         </div>
-                        <div class="settings-grid">
-                            <label class="setting-field">API 地址，一行一个
-                                <textarea name="haozhu_api_hosts" rows="3" maxlength="500" placeholder="api.haozhuma.com&#10;api.haozhuyun.com"><?= htmlspecialchars($jmwebSettings['haozhu_api_hosts'], ENT_QUOTES, 'UTF-8') ?></textarea>
-                            </label>
-                            <label class="setting-field">释放接口 api 参数，暂未填写官方接口时留空
-                                <input name="haozhu_release_api" value="<?= htmlspecialchars($jmwebSettings['haozhu_release_api'], ENT_QUOTES, 'UTF-8') ?>" maxlength="60" placeholder="例如 releasePhone，确认官方文档后填写">
-                            </label>
+                        <div class="platform-config-panel">
+                            <div class="platform-config-head">
+                                <div>
+                                    <strong>豪猪</strong>
+                                    <p>当前启用的接码平台。这里填写豪猪账号、密钥、接口地址和释放接口参数。</p>
+                                </div>
+                                <span class="settings-badge">当前启用</span>
+                            </div>
+                            <div class="settings-grid two">
+                                <label class="setting-field">豪猪 API 账号
+                                    <input name="haozhu_api_account" value="<?= htmlspecialchars($jmwebSettings['haozhu_api_account'], ENT_QUOTES, 'UTF-8') ?>" maxlength="160" placeholder="请输入豪猪 API 账号">
+                                </label>
+                                <label class="setting-field">豪猪 API 密钥/密码
+                                    <input name="haozhu_api_password" type="password" value="" maxlength="160" placeholder="<?= !empty($jmwebSettings['haozhu_api_password']) ? '已保存，留空不修改' : '请输入豪猪 API 密钥或密码' ?>" autocomplete="new-password">
+                                </label>
+                            </div>
+                            <div class="settings-grid">
+                                <label class="setting-field">豪猪 API 地址，一行一个
+                                    <textarea name="haozhu_api_hosts" rows="3" maxlength="500" placeholder="api.haozhuma.com&#10;api.haozhuyun.com"><?= htmlspecialchars($jmwebSettings['haozhu_api_hosts'], ENT_QUOTES, 'UTF-8') ?></textarea>
+                                </label>
+                                <label class="setting-field">豪猪释放接口 api 参数，暂未填写官方接口时留空
+                                    <input name="haozhu_release_api" value="<?= htmlspecialchars($jmwebSettings['haozhu_release_api'], ENT_QUOTES, 'UTF-8') ?>" maxlength="60" placeholder="例如 releasePhone，确认官方文档后填写">
+                                </label>
+                            </div>
+                        </div>
+                        <div class="platform-add-placeholder">
+                            <strong>其他接码平台</strong>
+                            <span>预留扩展位置：后续可以添加平台名称、API 地址、账号、密钥、取号接口、验证码接口、释放接口等配置。</span>
                         </div>
                         <div class="settings-actions inline-actions">
-                            <div id="haozhuSettingsMsg" class="settings-msg">修改豪猪密钥后点击保存。</div>
+                            <div id="haozhuSettingsMsg" class="settings-msg">修改豪猪平台配置后点击保存。</div>
                             <div class="hero-actions">
                                 <button class="btn primary" type="submit">保存豪猪配置</button>
                             </div>
                         </div>
-                    </div>
-                    <div class="settings-card">
-                        <div class="settings-card-head">
-                            <strong>其他接码平台</strong>
-                            <span>预留扩展区域</span>
-                        </div>
-                        <div class="settings-msg">后续新增其他平台时，账号、密钥和接口地址会放在这里统一管理。</div>
                     </div>
                 </form>
                 <div class="cards-workspace">
