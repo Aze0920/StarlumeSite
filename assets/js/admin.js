@@ -169,16 +169,18 @@ if (updateBtn) {
 }
 
 function fillSettingsForm(settings) {
-    var form = document.getElementById('settingsForm');
-    if (!form || !settings) return;
-    Object.keys(settings).forEach(function (key) {
-        if (!form.elements[key]) return;
-        if (key === 'haozhu_api_password') {
-            form.elements[key].value = '';
-            form.elements[key].placeholder = settings.haozhu_api_password_saved ? '已保存，留空不修改' : '请输入 API 密码';
-            return;
-        }
-        form.elements[key].value = settings[key];
+    if (!settings) return;
+    [document.getElementById('settingsForm'), document.getElementById('haozhuSettingsForm')].forEach(function (form) {
+        if (!form) return;
+        Object.keys(settings).forEach(function (key) {
+            if (!form.elements[key]) return;
+            if (key === 'haozhu_api_password') {
+                form.elements[key].value = '';
+                form.elements[key].placeholder = settings.haozhu_api_password_saved ? '已保存，留空不修改' : '请输入 API 密码';
+                return;
+            }
+            form.elements[key].value = settings[key];
+        });
     });
     if (settings.site_name) {
         document.querySelectorAll('[data-setting-display="site_name"]').forEach(function (item) {
@@ -191,6 +193,8 @@ function fillSettingsForm(settings) {
 var settingsForm = document.getElementById('settingsForm');
 var settingsMsg = document.getElementById('settingsMsg');
 var resetSettingsBtn = document.getElementById('resetSettingsBtn');
+var haozhuSettingsForm = document.getElementById('haozhuSettingsForm');
+var haozhuSettingsMsg = document.getElementById('haozhuSettingsMsg');
 
 if (settingsForm) {
     settingsForm.addEventListener('submit', async function (event) {
@@ -214,6 +218,39 @@ if (settingsForm) {
             if (submitButton) {
                 submitButton.disabled = false;
                 submitButton.textContent = '保存设置';
+            }
+        }
+    });
+}
+
+function setHaozhuSettingsMessage(message, type) {
+    if (!haozhuSettingsMsg) return;
+    haozhuSettingsMsg.textContent = message;
+    haozhuSettingsMsg.className = 'settings-msg' + (type ? ' ' + type : '');
+}
+
+if (haozhuSettingsForm) {
+    haozhuSettingsForm.addEventListener('submit', async function (event) {
+        event.preventDefault();
+        var submitButton = haozhuSettingsForm.querySelector('button[type="submit"]');
+        if (submitButton) {
+            submitButton.disabled = true;
+            submitButton.textContent = '保存中...';
+        }
+        setHaozhuSettingsMessage('正在保存豪猪配置...');
+        var formData = new FormData(haozhuSettingsForm);
+        var payload = {};
+        formData.forEach(function (value, key) { payload[key] = value; });
+        try {
+            var result = await postAdmin('save_settings', payload);
+            setHaozhuSettingsMessage(result.ok ? '豪猪配置已保存。' : (result.message || '保存失败'), result.ok ? 'success' : 'error');
+            if (result.ok && result.settings) fillSettingsForm(result.settings);
+        } catch (error) {
+            setHaozhuSettingsMessage('保存失败：' + error.message, 'error');
+        } finally {
+            if (submitButton) {
+                submitButton.disabled = false;
+                submitButton.textContent = '保存豪猪配置';
             }
         }
     });

@@ -8,6 +8,7 @@ function jmweb_default_settings()
         'notice_text' => '不退不换，手机号错误点击取消激活，多兑换几次。',
         'exchange_expire_minutes' => 5,
         'cancel_wait_minutes' => 2,
+        'active_sms_provider' => 'haozhu',
         'haozhu_api_hosts' => "api.haozhuma.com\napi.haozhuyun.com",
         'haozhu_api_account' => '',
         'haozhu_api_password' => '',
@@ -65,17 +66,25 @@ function jmweb_clean_settings($input)
     $current = jmweb_read_settings();
     $settings = array();
 
-    $settings['site_name'] = isset($input['site_name']) ? trim((string) $input['site_name']) : $defaults['site_name'];
-    $settings['home_title'] = isset($input['home_title']) ? trim((string) $input['home_title']) : $defaults['home_title'];
-    $settings['home_subtitle'] = isset($input['home_subtitle']) ? trim((string) $input['home_subtitle']) : $defaults['home_subtitle'];
-    $settings['notice_text'] = isset($input['notice_text']) ? trim((string) $input['notice_text']) : $defaults['notice_text'];
-    $settings['exchange_expire_minutes'] = isset($input['exchange_expire_minutes']) ? (int) $input['exchange_expire_minutes'] : (int) $defaults['exchange_expire_minutes'];
-    $settings['cancel_wait_minutes'] = isset($input['cancel_wait_minutes']) ? (int) $input['cancel_wait_minutes'] : (int) $defaults['cancel_wait_minutes'];
-    $settings['haozhu_api_hosts'] = isset($input['haozhu_api_hosts']) ? jmweb_clean_multiline_hosts($input['haozhu_api_hosts']) : $defaults['haozhu_api_hosts'];
-    $settings['haozhu_api_account'] = isset($input['haozhu_api_account']) ? trim((string) $input['haozhu_api_account']) : $defaults['haozhu_api_account'];
-    $settings['haozhu_api_password'] = isset($input['haozhu_api_password']) ? trim((string) $input['haozhu_api_password']) : '';
-    if ($settings['haozhu_api_password'] === '' && !empty($current['haozhu_api_password'])) {
-        $settings['haozhu_api_password'] = (string) $current['haozhu_api_password'];
+    $settings['site_name'] = isset($input['site_name']) ? trim((string) $input['site_name']) : (isset($current['site_name']) ? (string) $current['site_name'] : $defaults['site_name']);
+    $settings['home_title'] = isset($input['home_title']) ? trim((string) $input['home_title']) : (isset($current['home_title']) ? (string) $current['home_title'] : $defaults['home_title']);
+    $settings['home_subtitle'] = isset($input['home_subtitle']) ? trim((string) $input['home_subtitle']) : (isset($current['home_subtitle']) ? (string) $current['home_subtitle'] : $defaults['home_subtitle']);
+    $settings['notice_text'] = isset($input['notice_text']) ? trim((string) $input['notice_text']) : (isset($current['notice_text']) ? (string) $current['notice_text'] : $defaults['notice_text']);
+    $settings['exchange_expire_minutes'] = isset($input['exchange_expire_minutes']) ? (int) $input['exchange_expire_minutes'] : (isset($current['exchange_expire_minutes']) ? (int) $current['exchange_expire_minutes'] : (int) $defaults['exchange_expire_minutes']);
+    $settings['cancel_wait_minutes'] = isset($input['cancel_wait_minutes']) ? (int) $input['cancel_wait_minutes'] : (isset($current['cancel_wait_minutes']) ? (int) $current['cancel_wait_minutes'] : (int) $defaults['cancel_wait_minutes']);
+    $settings['active_sms_provider'] = isset($input['active_sms_provider']) ? trim((string) $input['active_sms_provider']) : (isset($current['active_sms_provider']) ? (string) $current['active_sms_provider'] : $defaults['active_sms_provider']);
+    if ($settings['active_sms_provider'] !== 'haozhu') {
+        $settings['active_sms_provider'] = 'haozhu';
+    }
+    $settings['haozhu_api_hosts'] = isset($input['haozhu_api_hosts']) ? jmweb_clean_multiline_hosts($input['haozhu_api_hosts']) : (isset($current['haozhu_api_hosts']) ? (string) $current['haozhu_api_hosts'] : $defaults['haozhu_api_hosts']);
+    $settings['haozhu_api_account'] = isset($input['haozhu_api_account']) ? trim((string) $input['haozhu_api_account']) : (isset($current['haozhu_api_account']) ? (string) $current['haozhu_api_account'] : $defaults['haozhu_api_account']);
+    if (isset($input['haozhu_api_password'])) {
+        $settings['haozhu_api_password'] = trim((string) $input['haozhu_api_password']);
+        if ($settings['haozhu_api_password'] === '' && !empty($current['haozhu_api_password'])) {
+            $settings['haozhu_api_password'] = (string) $current['haozhu_api_password'];
+        }
+    } else {
+        $settings['haozhu_api_password'] = isset($current['haozhu_api_password']) ? (string) $current['haozhu_api_password'] : $defaults['haozhu_api_password'];
     }
     $settings['haozhu_release_api'] = isset($input['haozhu_release_api']) ? trim((string) $input['haozhu_release_api']) : (isset($current['haozhu_release_api']) ? (string) $current['haozhu_release_api'] : '');
 

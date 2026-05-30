@@ -183,7 +183,15 @@ code { padding: 3px 7px; border-radius: 8px; background: #eef2ff; color: #4338ca
 .card-stats div { padding: 14px; border-radius: 18px; background: #f8fafc; border: 1px solid #eef2ff; }
 .card-stats strong { display: block; font-size: 1.35rem; letter-spacing: -.04em; }
 .card-stats span { color: var(--muted); font-weight: 800; }
-.card-list-panel { min-width: 0; }
+.card-list-panel { min-width: 0; grid-column: 2; grid-row: 1 / span 2; }
+.provider-config-panel, .create-code-panel { grid-column: 1; }
+.provider-settings-form { display: grid; gap: 16px; }
+.provider-tabs { display: flex; gap: 10px; flex-wrap: wrap; }
+.provider-tab { border: 1px solid #d7def0; border-radius: 999px; padding: 10px 14px; background: #f8fafc; color: #344054; font-weight: 900; }
+.provider-tab.active { color: #4f46e5; border-color: rgba(99, 91, 255, .32); background: #eef2ff; }
+.provider-tab:disabled { cursor: not-allowed; opacity: .58; }
+.provider-settings-actions { display: grid; gap: 12px; margin-top: 2px; }
+.create-code-panel { margin-top: 18px; }
 .card-list-toolbar, .card-filter-row, .card-batch-row, .card-pager { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
 .card-list-toolbar { margin-bottom: 14px; padding-bottom: 14px; border-bottom: 1px solid #eef2f7; }
 .card-list-toolbar strong { display: block; font-size: 1.2rem; }
@@ -252,6 +260,7 @@ code { padding: 3px 7px; border-radius: 8px; background: #eef2ff; color: #4338ca
     .form-grid { grid-template-columns: 1fr; }
     .update-status-card { grid-template-columns: 1fr; }
     .cards-workspace { grid-template-columns: 1fr; }
+    .card-list-panel, .provider-config-panel, .create-code-panel { grid-column: auto; grid-row: auto; }
     .card-item { grid-template-columns: auto 1fr; }
     .card-status, .card-meta, .card-item small { grid-column: 2; justify-self: start; }
     .settings-grid.two { grid-template-columns: 1fr; }
