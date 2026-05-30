@@ -1,8 +1,8 @@
 {
-  "version": "1.0.43",
+  "version": "1.0.44",
   "name": "豪猪接码",
   "repo": "https://github.com/Aze0920/StarlumeSite",
   "branch": "main",
   "release_date": "2026-05-30",
-  "description": "新增鲁班接码平台：后台独立管理页、APIKEY 配置、service_id 检测、LB- 前缀独立制卡，前台兑换自动走鲁班 getNumber/getSms/setStatus 接口。"
+  "description": "修复卡密列表混显：豪猪管理仅显示 HZ- 卡密，鲁班接码页新增独立卡密详情列表，仅显示 LB- 卡密。"
 }

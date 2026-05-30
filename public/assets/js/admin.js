@@ -330,62 +330,274 @@ if (resetSettingsBtn) {
     });
 }
 
-var cardState = {
-    page: 1,
-    pages: 1,
-    limit: 10,
-};
-var cardCacheKey = 'jmweb_card_filters';
+function initCardBoard(config) {
+    if (!document.getElementById(config.ids.list)) {
+        return null;
+    }
+    var state = { page: 1, pages: 1, limit: 10 };
+    var cacheKey = config.cacheKey || ('jmweb_card_filters_' + config.provider);
 
-function saveCardFilters() {
-    var limitSelect = document.getElementById('cardLimitSelect');
-    var keywordInput = document.getElementById('cardKeyword');
-    try {
-        localStorage.setItem(cardCacheKey, JSON.stringify({
-            statuses: getCardStatuses(),
-            limit: limitSelect ? limitSelect.value : '10',
-            keyword: keywordInput ? keywordInput.value : '',
-        }));
-    } catch (e) {}
-}
-
-function restoreCardFilters() {
-    var raw = '';
-    try { raw = localStorage.getItem(cardCacheKey) || ''; } catch (e) { raw = ''; }
-    if (!raw) return;
-    try {
-        var data = JSON.parse(raw);
-        var savedStatuses = Array.isArray(data.statuses) ? data.statuses : [];
-        document.querySelectorAll('input[name="card_status"]').forEach(function (item) {
-            item.checked = savedStatuses.indexOf(item.value) !== -1;
+    function getStatuses() {
+        var statuses = [];
+        document.querySelectorAll('input[name="' + config.statusName + '"]:checked').forEach(function (item) {
+            statuses.push(item.value);
         });
-        var limitSelect = document.getElementById('cardLimitSelect');
-        if (limitSelect && data.limit) limitSelect.value = data.limit;
-        var keywordInput = document.getElementById('cardKeyword');
-        if (keywordInput && typeof data.keyword === 'string') keywordInput.value = data.keyword;
-    } catch (e) {}
-}
+        return statuses;
+    }
 
-function getCardStatuses() {
-    var statuses = [];
-    document.querySelectorAll('input[name="card_status"]:checked').forEach(function (item) {
-        statuses.push(item.value);
+    function saveFilters() {
+        var limitSelect = document.getElementById(config.ids.limitSelect);
+        var keywordInput = document.getElementById(config.ids.keyword);
+        try {
+            localStorage.setItem(cacheKey, JSON.stringify({
+                statuses: getStatuses(),
+                limit: limitSelect ? limitSelect.value : '10',
+                keyword: keywordInput ? keywordInput.value : '',
+            }));
+        } catch (e) {}
+    }
+
+    function restoreFilters() {
+        var raw = '';
+        try { raw = localStorage.getItem(cacheKey) || ''; } catch (e) { raw = ''; }
+        if (!raw) return;
+        try {
+            var data = JSON.parse(raw);
+            var savedStatuses = Array.isArray(data.statuses) ? data.statuses : [];
+            document.querySelectorAll('input[name="' + config.statusName + '"]').forEach(function (item) {
+                item.checked = savedStatuses.indexOf(item.value) !== -1;
+            });
+            var limitSelect = document.getElementById(config.ids.limitSelect);
+            if (limitSelect && data.limit) limitSelect.value = data.limit;
+            var keywordInput = document.getElementById(config.ids.keyword);
+            if (keywordInput && typeof data.keyword === 'string') keywordInput.value = data.keyword;
+        } catch (e) {}
+    }
+
+    function selectedIds() {
+        var list = document.getElementById(config.ids.list);
+        if (!list) return [];
+        var ids = [];
+        list.querySelectorAll('.' + config.checkClass + ':checked').forEach(function (item) {
+            ids.push(item.value);
+        });
+        return ids;
+    }
+
+    function selectedNos() {
+        var list = document.getElementById(config.ids.list);
+        if (!list) return [];
+        return Array.prototype.slice.call(list.querySelectorAll('.' + config.checkClass + ':checked')).map(function (item) {
+            return item.getAttribute('data-card-no') || '';
+        }).filter(Boolean);
+    }
+
+    function renderStats(stats) {
+        var el = document.getElementById(config.ids.stats);
+        if (!el || !stats) return;
+        el.innerHTML = '';
+        [
+            ['total', '全部'],
+            ['available', '可用'],
+            ['used', '已用'],
+            ['disabled', '禁用'],
+        ].forEach(function (item) {
+            var box = document.createElement('div');
+            box.innerHTML = '<strong>' + (stats[item[0]] || 0) + '</strong><span>' + item[1] + '</span>';
+            el.appendChild(box);
+        });
+    }
+
+    function renderCards(cards) {
+        var list = document.getElementById(config.ids.list);
+        if (!list) return;
+        list.innerHTML = '';
+        if (!cards || !cards.length) {
+            list.className = 'card-list empty';
+            list.textContent = '暂无卡密。';
+            return;
+        }
+        list.className = 'card-list';
+        cards.forEach(function (card) {
+            var item = document.createElement('label');
+            item.className = 'card-item status-' + card.status;
+            item.setAttribute('data-card-item', String(card.id));
+            item.innerHTML = '<input class="' + config.checkClass + '" type="checkbox" value="' + card.id + '" data-card-no="' + escapeHtml(card.card_no) + '">' +
+                '<span class="card-no">' + escapeHtml(card.card_no) + '</span>' +
+                '<span class="card-status">' + escapeHtml(card.status_label) + '</span>' +
+                '<span class="card-meta"><b>项目ID：</b>' + escapeHtml(card.project_id || '-') + '</span>' +
+                '<span class="card-meta"><b>手机号：</b>' + escapeHtml(card.phone || '-') + '</span>' +
+                '<span class="card-meta"><b>验证码：</b>' + escapeHtml(card.sms_code || '-') + '</span>';
+            list.appendChild(item);
+        });
+        bindCardDragSelect(list, config.checkClass);
+    }
+
+    async function loadCards(resetPage) {
+        var list = document.getElementById(config.ids.list);
+        var limitSelect = document.getElementById(config.ids.limitSelect);
+        var keywordInput = document.getElementById(config.ids.keyword);
+        var summary = document.getElementById(config.ids.summary);
+        var pageInfo = document.getElementById(config.ids.pageInfo);
+        var selectAll = document.getElementById(config.ids.selectAll);
+        if (!list || !limitSelect) return;
+        if (resetPage) state.page = 1;
+        state.limit = parseInt(limitSelect.value, 10) || 10;
+        list.className = 'card-list empty';
+        list.textContent = '正在加载卡密...';
+        if (selectAll) selectAll.checked = false;
+        try {
+            var result = await postAdmin('list_cards', {
+                provider: config.provider,
+                limit: state.limit,
+                page: state.page,
+                keyword: keywordInput ? keywordInput.value : '',
+                statuses: getStatuses().join(','),
+            });
+            if (!result.ok) {
+                list.textContent = result.message || '加载失败';
+                return;
+            }
+            state.page = result.page || 1;
+            state.pages = result.pages || 1;
+            renderCards(result.cards || []);
+            renderStats(result.stats || {});
+            if (summary) summary.textContent = '一列显示 ' + (result.limit || state.limit) + ' 个，共 ' + (result.total || 0) + ' 个';
+            if (pageInfo) pageInfo.textContent = state.page + ' / ' + state.pages;
+        } catch (error) {
+            list.textContent = '加载失败：' + error.message;
+        }
+    }
+
+    restoreFilters();
+    loadCards(true);
+
+    var limitSelect = document.getElementById(config.ids.limitSelect);
+    if (limitSelect) limitSelect.addEventListener('change', function () { saveFilters(); loadCards(true); });
+    var refreshBtn = document.getElementById(config.ids.refreshBtn);
+    if (refreshBtn) refreshBtn.addEventListener('click', function () { saveFilters(); loadCards(true); });
+    var keywordInput = document.getElementById(config.ids.keyword);
+    if (keywordInput) keywordInput.addEventListener('keydown', function (event) { if (event.key === 'Enter') { saveFilters(); loadCards(true); } });
+    document.querySelectorAll('input[name="' + config.statusName + '"]').forEach(function (item) {
+        item.addEventListener('change', function () { saveFilters(); loadCards(true); });
     });
-    return statuses;
-}
-
-function selectedCardIds() {
-    var ids = [];
-    document.querySelectorAll('.card-check:checked').forEach(function (item) {
-        ids.push(item.value);
+    var prevPage = document.getElementById(config.ids.prevPage);
+    if (prevPage) prevPage.addEventListener('click', function () {
+        if (state.page > 1) {
+            state.page--;
+            loadCards(false);
+        }
     });
-    return ids;
+    var nextPage = document.getElementById(config.ids.nextPage);
+    if (nextPage) nextPage.addEventListener('click', function () {
+        if (state.page < state.pages) {
+            state.page++;
+            loadCards(false);
+        }
+    });
+    var selectAll = document.getElementById(config.ids.selectAll);
+    if (selectAll) selectAll.addEventListener('change', function () {
+        var list = document.getElementById(config.ids.list);
+        if (!list) return;
+        list.querySelectorAll('.' + config.checkClass).forEach(function (item) {
+            item.checked = selectAll.checked;
+            var row = item.closest('.card-item');
+            if (row) row.classList.toggle('is-selected', item.checked);
+        });
+    });
+    var copyBtn = document.getElementById(config.ids.copyBtn);
+    if (copyBtn) copyBtn.addEventListener('click', async function () {
+        var nos = selectedNos();
+        var msg = document.getElementById(config.ids.batchMsg);
+        if (!nos.length) {
+            setText(msg, '请先选择要复制的卡密。');
+            return;
+        }
+        copyBtn.disabled = true;
+        try {
+            await copyText(nos.join('\n'));
+            setText(msg, '已复制 ' + nos.length + ' 条卡密。');
+        } catch (error) {
+            setText(msg, '复制失败，请手动复制。');
+        } finally {
+            copyBtn.disabled = false;
+        }
+    });
+    document.querySelectorAll('[' + config.batchAttr + ']').forEach(function (button) {
+        button.addEventListener('click', async function () {
+            var ids = selectedIds();
+            var msg = document.getElementById(config.ids.batchMsg);
+            var action = button.getAttribute(config.batchAttr);
+            if (!ids.length) {
+                setText(msg, '请先选择卡密。');
+                return;
+            }
+            if (action === 'delete' && !confirm('确定删除选中的卡密吗？')) {
+                return;
+            }
+            if (action === 'disable' && !confirm('确定禁用选中的卡密吗？禁用后前台无法继续使用。')) {
+                return;
+            }
+            button.disabled = true;
+            setText(msg, '正在操作...');
+            try {
+                var result = await postAdmin('batch_cards', { ids: ids.join(','), batch_action: action });
+                setText(msg, result.message || '操作完成');
+                loadCards(false);
+            } catch (error) {
+                setText(msg, '操作失败：' + error.message);
+            } finally {
+                button.disabled = false;
+            }
+        });
+    });
+
+    return { loadCards: loadCards };
 }
 
-function selectedCardNos() {
-    return Array.prototype.slice.call(document.querySelectorAll('.card-check:checked')).map(function (item) {
-        return item.getAttribute('data-card-no') || '';
-    }).filter(Boolean);
+function bindCardDragSelect(list, checkClass) {
+    if (!list || list.getAttribute('data-drag-bound') === '1') return;
+    list.setAttribute('data-drag-bound', '1');
+    var dragging = false;
+    var dragValue = true;
+    var suppressClick = false;
+    function setItemChecked(target) {
+        var item = target && target.closest ? target.closest('.card-item') : null;
+        if (!item || !list.contains(item)) return;
+        var checkbox = item.querySelector('.' + checkClass);
+        if (!checkbox) return;
+        checkbox.checked = dragValue;
+        item.classList.toggle('is-selected', checkbox.checked);
+    }
+    list.addEventListener('mousedown', function (event) {
+        var item = event.target.closest ? event.target.closest('.card-item') : null;
+        if (!item || !list.contains(item)) return;
+        var checkbox = item.querySelector('.' + checkClass);
+        if (!checkbox) return;
+        dragging = true;
+        suppressClick = true;
+        dragValue = !checkbox.checked;
+        setItemChecked(item);
+        event.preventDefault();
+    });
+    list.addEventListener('mouseover', function (event) {
+        if (!dragging) return;
+        setItemChecked(event.target);
+    });
+    list.addEventListener('click', function (event) {
+        if (!suppressClick) return;
+        event.preventDefault();
+        event.stopPropagation();
+        suppressClick = false;
+    }, true);
+    document.addEventListener('mouseup', function () {
+        dragging = false;
+    });
+    list.addEventListener('change', function (event) {
+        if (!event.target.classList.contains(checkClass)) return;
+        var item = event.target.closest('.card-item');
+        if (item) item.classList.toggle('is-selected', event.target.checked);
+    });
 }
 
 function escapeHtml(value) {
@@ -411,131 +623,52 @@ function copyText(text) {
     return ok ? Promise.resolve() : Promise.reject(new Error('复制失败'));
 }
 
-function renderCardStats(stats) {
-    var el = document.getElementById('cardStats');
-    if (!el || !stats) return;
-    el.innerHTML = '';
-    [
-        ['total', '全部'],
-        ['available', '可用'],
-        ['used', '已用'],
-        ['disabled', '禁用'],
-    ].forEach(function (item) {
-        var box = document.createElement('div');
-        box.innerHTML = '<strong>' + (stats[item[0]] || 0) + '</strong><span>' + item[1] + '</span>';
-        el.appendChild(box);
-    });
-}
+var haozhuCardBoard = initCardBoard({
+    provider: 'haozhu',
+    cacheKey: 'jmweb_card_filters_haozhu',
+    statusName: 'card_status',
+    checkClass: 'card-check',
+    batchAttr: 'data-card-batch',
+    ids: {
+        list: 'cardList',
+        stats: 'cardStats',
+        limitSelect: 'cardLimitSelect',
+        keyword: 'cardKeyword',
+        summary: 'cardListSummary',
+        pageInfo: 'cardPageInfo',
+        selectAll: 'cardSelectAll',
+        batchMsg: 'cardBatchMsg',
+        refreshBtn: 'cardRefreshBtn',
+        prevPage: 'cardPrevPage',
+        nextPage: 'cardNextPage',
+        copyBtn: 'copyCardsBtn',
+    },
+});
 
-function renderCards(cards) {
-    var list = document.getElementById('cardList');
-    if (!list) return;
-    list.innerHTML = '';
-    if (!cards || !cards.length) {
-        list.className = 'card-list empty';
-        list.textContent = '暂无卡密。';
-        return;
-    }
-    list.className = 'card-list';
-    cards.forEach(function (card) {
-        var item = document.createElement('label');
-        item.className = 'card-item status-' + card.status;
-        item.setAttribute('data-card-item', String(card.id));
-        item.innerHTML = '<input class="card-check" type="checkbox" value="' + card.id + '" data-card-no="' + escapeHtml(card.card_no) + '">' +
-            '<span class="card-no">' + escapeHtml(card.card_no) + '</span>' +
-            '<span class="card-status">' + escapeHtml(card.status_label) + '</span>' +
-            '<span class="card-meta"><b>项目ID：</b>' + escapeHtml(card.project_id || '-') + '</span>' +
-            '<span class="card-meta"><b>手机号：</b>' + escapeHtml(card.phone || '-') + '</span>' +
-            '<span class="card-meta"><b>验证码：</b>' + escapeHtml(card.sms_code || '-') + '</span>';
-        list.appendChild(item);
-    });
-    bindCardDragSelect(list);
-}
-
-function bindCardDragSelect(list) {
-    if (!list || list.getAttribute('data-drag-bound') === '1') return;
-    list.setAttribute('data-drag-bound', '1');
-    var dragging = false;
-    var dragValue = true;
-    var suppressClick = false;
-    function setItemChecked(target) {
-        var item = target && target.closest ? target.closest('.card-item') : null;
-        if (!item || !list.contains(item)) return;
-        var checkbox = item.querySelector('.card-check');
-        if (!checkbox) return;
-        checkbox.checked = dragValue;
-        item.classList.toggle('is-selected', checkbox.checked);
-    }
-    list.addEventListener('mousedown', function (event) {
-        var item = event.target.closest ? event.target.closest('.card-item') : null;
-        if (!item || !list.contains(item)) return;
-        var checkbox = item.querySelector('.card-check');
-        if (!checkbox) return;
-        dragging = true;
-        suppressClick = true;
-        dragValue = !checkbox.checked;
-        setItemChecked(item);
-        event.preventDefault();
-    });
-    list.addEventListener('mouseover', function (event) {
-        if (!dragging) return;
-        setItemChecked(event.target);
-    });
-    list.addEventListener('click', function (event) {
-        if (!suppressClick) return;
-        event.preventDefault();
-        event.stopPropagation();
-        suppressClick = false;
-    }, true);
-    document.addEventListener('mouseup', function () {
-        dragging = false;
-    });
-    list.addEventListener('change', function (event) {
-        if (!event.target.classList.contains('card-check')) return;
-        var item = event.target.closest('.card-item');
-        if (item) item.classList.toggle('is-selected', event.target.checked);
-    });
-}
-
-async function loadCards(resetPage) {
-    var list = document.getElementById('cardList');
-    var limitSelect = document.getElementById('cardLimitSelect');
-    var keywordInput = document.getElementById('cardKeyword');
-    var summary = document.getElementById('cardListSummary');
-    var pageInfo = document.getElementById('cardPageInfo');
-    var selectAll = document.getElementById('cardSelectAll');
-    if (!list || !limitSelect) return;
-    if (resetPage) cardState.page = 1;
-    cardState.limit = parseInt(limitSelect.value, 10) || 10;
-    list.className = 'card-list empty';
-    list.textContent = '正在加载卡密...';
-    if (selectAll) selectAll.checked = false;
-    try {
-        var result = await postAdmin('list_cards', {
-            limit: cardState.limit,
-            page: cardState.page,
-            keyword: keywordInput ? keywordInput.value : '',
-            statuses: getCardStatuses().join(','),
-        });
-        if (!result.ok) {
-            list.textContent = result.message || '加载失败';
-            return;
-        }
-        cardState.page = result.page || 1;
-        cardState.pages = result.pages || 1;
-        renderCards(result.cards || []);
-        renderCardStats(result.stats || {});
-        if (summary) summary.textContent = '一列显示 ' + (result.limit || cardState.limit) + ' 个，共 ' + (result.total || 0) + ' 个';
-        if (pageInfo) pageInfo.textContent = cardState.page + ' / ' + cardState.pages;
-    } catch (error) {
-        list.textContent = '加载失败：' + error.message;
-    }
-}
+var lubanCardBoard = initCardBoard({
+    provider: 'luban',
+    cacheKey: 'jmweb_card_filters_luban',
+    statusName: 'luban_card_status',
+    checkClass: 'luban-card-check',
+    batchAttr: 'data-luban-card-batch',
+    ids: {
+        list: 'lubanCardList',
+        stats: 'lubanCardStats',
+        limitSelect: 'lubanCardLimitSelect',
+        keyword: 'lubanCardKeyword',
+        summary: 'lubanCardListSummary',
+        pageInfo: 'lubanCardPageInfo',
+        selectAll: 'lubanCardSelectAll',
+        batchMsg: 'lubanCardBatchMsg',
+        refreshBtn: 'lubanCardRefreshBtn',
+        prevPage: 'lubanCardPrevPage',
+        nextPage: 'lubanCardNextPage',
+        copyBtn: 'lubanCopyCardsBtn',
+    },
+});
 
 var cardCreateForm = document.getElementById('cardCreateForm');
 if (cardCreateForm) {
-    restoreCardFilters();
-    loadCards(true);
     cardCreateForm.addEventListener('submit', async function (event) {
         event.preventDefault();
         var msg = document.getElementById('cardCreateMsg');
@@ -559,7 +692,7 @@ if (cardCreateForm) {
         try {
             var result = await postAdmin('create_cards', { count: count, project_id: projectId });
             setCardMessage(msg, result.message || '制作完成', result.ok ? 'success' : 'error');
-            if (result.ok) loadCards(true);
+            if (result.ok && haozhuCardBoard) haozhuCardBoard.loadCards(true);
         } catch (error) {
             setCardMessage(msg, '制作失败：' + error.message, 'error');
         } finally {
@@ -596,7 +729,7 @@ if (lubanCardCreateForm) {
         try {
             var result = await postAdmin('create_luban_cards', { count: count, project_id: projectId });
             setCardMessage(msg, result.message || '制作完成', result.ok ? 'success' : 'error');
-            if (result.ok) loadCards(true);
+            if (result.ok && lubanCardBoard) lubanCardBoard.loadCards(true);
         } catch (error) {
             setCardMessage(msg, '制作失败：' + error.message, 'error');
         } finally {
@@ -657,81 +790,3 @@ if (checkProjectBtn) {
         }
     });
 }
-
-var cardLimitSelect = document.getElementById('cardLimitSelect');
-if (cardLimitSelect) cardLimitSelect.addEventListener('change', function () { saveCardFilters(); loadCards(true); });
-var cardRefreshBtn = document.getElementById('cardRefreshBtn');
-if (cardRefreshBtn) cardRefreshBtn.addEventListener('click', function () { saveCardFilters(); loadCards(true); });
-var cardKeyword = document.getElementById('cardKeyword');
-if (cardKeyword) cardKeyword.addEventListener('keydown', function (event) { if (event.key === 'Enter') { saveCardFilters(); loadCards(true); } });
-document.querySelectorAll('input[name="card_status"]').forEach(function (item) {
-    item.addEventListener('change', function () { saveCardFilters(); loadCards(true); });
-});
-var cardPrevPage = document.getElementById('cardPrevPage');
-if (cardPrevPage) cardPrevPage.addEventListener('click', function () {
-    if (cardState.page > 1) {
-        cardState.page--;
-        loadCards(false);
-    }
-});
-var cardNextPage = document.getElementById('cardNextPage');
-if (cardNextPage) cardNextPage.addEventListener('click', function () {
-    if (cardState.page < cardState.pages) {
-        cardState.page++;
-        loadCards(false);
-    }
-});
-var cardSelectAll = document.getElementById('cardSelectAll');
-if (cardSelectAll) cardSelectAll.addEventListener('change', function () {
-    document.querySelectorAll('.card-check').forEach(function (item) {
-        item.checked = cardSelectAll.checked;
-        var row = item.closest('.card-item');
-        if (row) row.classList.toggle('is-selected', item.checked);
-    });
-});
-var copyCardsBtn = document.getElementById('copyCardsBtn');
-if (copyCardsBtn) copyCardsBtn.addEventListener('click', async function () {
-    var nos = selectedCardNos();
-    var msg = document.getElementById('cardBatchMsg');
-    if (!nos.length) {
-        setText(msg, '请先选择要复制的卡密。');
-        return;
-    }
-    copyCardsBtn.disabled = true;
-    try {
-        await copyText(nos.join('\n'));
-        setText(msg, '已复制 ' + nos.length + ' 条卡密。');
-    } catch (error) {
-        setText(msg, '复制失败，请手动复制。');
-    } finally {
-        copyCardsBtn.disabled = false;
-    }
-});
-document.querySelectorAll('[data-card-batch]').forEach(function (button) {
-    button.addEventListener('click', async function () {
-        var ids = selectedCardIds();
-        var msg = document.getElementById('cardBatchMsg');
-        var action = button.getAttribute('data-card-batch');
-        if (!ids.length) {
-            setText(msg, '请先选择卡密。');
-            return;
-        }
-        if (action === 'delete' && !confirm('确定删除选中的卡密吗？')) {
-            return;
-        }
-        if (action === 'disable' && !confirm('确定禁用选中的卡密吗？禁用后前台无法继续使用。')) {
-            return;
-        }
-        button.disabled = true;
-        setText(msg, '正在操作...');
-        try {
-            var result = await postAdmin('batch_cards', { ids: ids.join(','), batch_action: action });
-            setText(msg, result.message || '操作完成');
-            loadCards(false);
-        } catch (error) {
-            setText(msg, '操作失败：' + error.message);
-        } finally {
-            button.disabled = false;
-        }
-    });
-});

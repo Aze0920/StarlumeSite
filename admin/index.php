@@ -261,15 +261,52 @@ $jmwebSettings = jmweb_read_settings();
                             <button class="btn primary full" type="submit">开始生成</button>
                             <div id="lubanCardCreateMsg" class="settings-msg">请输入项目ID并先检测可用性。</div>
                         </form>
+                        <div class="card-stats" id="lubanCardStats">
+                            <div><strong>0</strong><span>全部</span></div>
+                            <div><strong>0</strong><span>可用</span></div>
+                            <div><strong>0</strong><span>已用</span></div>
+                            <div><strong>0</strong><span>禁用</span></div>
+                        </div>
                     </section>
                     <section class="settings-card card-list-panel">
                         <div class="card-list-toolbar">
                             <div>
-                                <strong>鲁班卡密提示</strong>
-                                <span>鲁班卡密以 LB- 开头，并写入独立编号前缀</span>
+                                <strong>鲁班卡密详情</strong>
+                                <span id="lubanCardListSummary">一列显示 10 个</span>
+                            </div>
+                            <div class="card-toolbar-controls">
+                                <select id="lubanCardLimitSelect">
+                                    <option value="10">10</option>
+                                    <option value="50">50</option>
+                                    <option value="100">100</option>
+                                    <option value="500">500</option>
+                                    <option value="1000">1000</option>
+                                    <option value="5000">5000</option>
+                                    <option value="10000">10000</option>
+                                </select>
+                                <input id="lubanCardKeyword" placeholder="搜索卡密">
                             </div>
                         </div>
-                        <p class="muted">生成后可在“豪猪管理”的卡密详情列表统一搜索、复制、启用、禁用或删除。前台兑换会按 LB- 前缀自动走鲁班接码接口。</p>
+                        <div class="card-filter-row">
+                            <label><input type="checkbox" name="luban_card_status" value="available" checked> 可用</label>
+                            <label><input type="checkbox" name="luban_card_status" value="used" checked> 已用</label>
+                            <label><input type="checkbox" name="luban_card_status" value="disabled" checked> 禁用</label>
+                            <button class="btn ghost" type="button" id="lubanCardRefreshBtn">刷新</button>
+                        </div>
+                        <div class="card-batch-row">
+                            <label><input type="checkbox" id="lubanCardSelectAll"> 全选当前页</label>
+                            <button class="btn ghost" type="button" id="lubanCopyCardsBtn">复制卡密</button>
+                            <button class="btn ghost" type="button" data-luban-card-batch="enable">启用</button>
+                            <button class="btn ghost danger-soft" type="button" data-luban-card-batch="disable">禁用卡密</button>
+                            <button class="btn ghost danger-soft" type="button" data-luban-card-batch="delete">删除</button>
+                            <span id="lubanCardBatchMsg" class="muted">可多选后批量操作</span>
+                        </div>
+                        <div id="lubanCardList" class="card-list empty">正在加载卡密...</div>
+                        <div class="card-pager">
+                            <button class="btn ghost" type="button" id="lubanCardPrevPage">上一页</button>
+                            <span id="lubanCardPageInfo">1 / 1</span>
+                            <button class="btn ghost" type="button" id="lubanCardNextPage">下一页</button>
+                        </div>
                     </section>
                 </div>
             </section>

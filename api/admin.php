@@ -416,6 +416,17 @@ try {
         return 'haozhu';
     }
 
+    function jmweb_clean_card_provider($provider)
+    {
+        $provider = trim((string) $provider);
+        return in_array($provider, array('haozhu', 'luban'), true) ? $provider : '';
+    }
+
+    function jmweb_card_provider_prefix($provider)
+    {
+        return $provider === 'luban' ? 'LB-' : 'HZ-';
+    }
+
     function jmweb_card_allowed_limit($limit)
     {
         $allowed = array(10, 50, 100, 500, 1000, 5000, 10000);
@@ -859,9 +870,14 @@ try {
         }
         $keyword = isset($_POST['keyword']) ? trim((string) $_POST['keyword']) : '';
         $statuses = jmweb_card_clean_statuses(isset($_POST['statuses']) ? $_POST['statuses'] : '');
+        $provider = jmweb_clean_card_provider(isset($_POST['provider']) ? $_POST['provider'] : '');
 
         $where = array();
         $params = array();
+        if ($provider !== '') {
+            $where[] = 'card_no LIKE ?';
+            $params[] = jmweb_card_provider_prefix($provider) . '%';
+        }
         if ($keyword !== '') {
             $where[] = '(card_no LIKE ? OR project_id LIKE ?)';
             $params[] = '%' . $keyword . '%';
@@ -890,7 +906,16 @@ try {
         $listStmt->execute($params);
 
         $stats = array('total' => 0, 'available' => 0, 'used' => 0, 'disabled' => 0);
-        $statRows = $pdo->query('SELECT status, COUNT(*) AS total FROM jm_cards GROUP BY status')->fetchAll();
+        $statWhere = array();
+        $statParams = array();
+        if ($provider !== '') {
+            $statWhere[] = 'card_no LIKE ?';
+            $statParams[] = jmweb_card_provider_prefix($provider) . '%';
+        }
+        $statSql = 'SELECT status, COUNT(*) AS total FROM jm_cards' . (empty($statWhere) ? '' : (' WHERE ' . implode(' AND ', $statWhere))) . ' GROUP BY status';
+        $statStmt = $pdo->prepare($statSql);
+        $statStmt->execute($statParams);
+        $statRows = $statStmt->fetchAll();
         foreach ($statRows as $row) {
             $key = isset($row['status']) ? $row['status'] : '';
             $value = (int) $row['total'];
