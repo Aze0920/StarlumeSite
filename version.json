@@ -1,8 +1,8 @@
 {
-  "version": "1.0.44",
+  "version": "1.0.45",
   "name": "豪猪接码",
   "repo": "https://github.com/Aze0920/StarlumeSite",
   "branch": "main",
   "release_date": "2026-05-30",
-  "description": "修复卡密列表混显：豪猪管理仅显示 HZ- 卡密，鲁班接码页新增独立卡密详情列表，仅显示 LB- 卡密。"
+  "description": "生成卡密后弹出操作提示：蓝色复制到剪贴板、绿色导出 txt、白色取消；接口返回全部新生成卡密。"
 }

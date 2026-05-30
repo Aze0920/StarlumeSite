@@ -799,9 +799,7 @@ try {
             $insert->execute(array($cardNo, $projectId, 'available', $now, $now));
             if ($insert->rowCount() > 0) {
                 $created++;
-                if (count($cards) < 100) {
-                    $cards[] = $cardNo;
-                }
+                $cards[] = $cardNo;
             }
         }
 
@@ -810,7 +808,8 @@ try {
             'ok' => $created === $count,
             'message' => $created === $count ? '已成功生成 ' . $created . ' 个鲁班兑换码，已逐条写入 jm_cards 独立兑换码表。' : '只成功生成 ' . $created . ' 个兑换码，请重试。',
             'created' => $created,
-            'sample' => $cards,
+            'cards' => $cards,
+            'sample' => array_slice($cards, 0, 100),
         ));
     }
 
@@ -845,9 +844,7 @@ try {
             $insert->execute(array($cardNo, $projectId, 'available', $now, $now));
             if ($insert->rowCount() > 0) {
                 $created++;
-                if (count($cards) < 100) {
-                    $cards[] = $cardNo;
-                }
+                $cards[] = $cardNo;
             }
         }
 
@@ -856,7 +853,8 @@ try {
             'ok' => $created === $count,
             'message' => $created === $count ? '已成功生成 ' . $created . ' 个兑换码，已逐条写入 jm_cards 独立兑换码表。' : '只成功生成 ' . $created . ' 个兑换码，请重试。',
             'created' => $created,
-            'sample' => $cards,
+            'cards' => $cards,
+            'sample' => array_slice($cards, 0, 100),
         ));
     }
 

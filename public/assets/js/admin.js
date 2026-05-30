@@ -623,6 +623,112 @@ function copyText(text) {
     return ok ? Promise.resolve() : Promise.reject(new Error('复制失败'));
 }
 
+function exportTextFile(filename, text) {
+    var blob = new Blob([text], { type: 'text/plain;charset=utf-8' });
+    var url = URL.createObjectURL(blob);
+    var link = document.createElement('a');
+    link.href = url;
+    link.download = filename;
+    link.style.display = 'none';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+}
+
+function ensureCardExportModal() {
+    var modal = document.getElementById('cardExportModal');
+    if (modal) return modal;
+    modal = document.createElement('div');
+    modal.id = 'cardExportModal';
+    modal.className = 'card-export-modal hidden';
+    modal.innerHTML = '<div class="card-export-backdrop" data-card-export-close="1"></div>' +
+        '<div class="card-export-dialog" role="dialog" aria-modal="true" aria-labelledby="cardExportTitle">' +
+        '<span class="eyebrow">Card Export</span>' +
+        '<h3 id="cardExportTitle">卡密已生成</h3>' +
+        '<p id="cardExportDesc">请选择下一步操作。</p>' +
+        '<div class="card-export-actions">' +
+        '<button class="btn info" type="button" id="cardExportCopyBtn">复制到剪贴板</button>' +
+        '<button class="btn success" type="button" id="cardExportExportBtn">导出</button>' +
+        '<button class="btn ghost" type="button" id="cardExportCancelBtn">取消</button>' +
+        '</div>' +
+        '<div id="cardExportModalMsg" class="settings-msg"></div>' +
+        '</div>';
+    document.body.appendChild(modal);
+    return modal;
+}
+
+function closeCardExportModal() {
+    var modal = document.getElementById('cardExportModal');
+    if (modal) modal.classList.add('hidden');
+}
+
+function showCardExportPrompt(options) {
+    var cards = Array.isArray(options.cards) ? options.cards.filter(Boolean) : [];
+    if (!cards.length) return;
+    var modal = ensureCardExportModal();
+    var desc = document.getElementById('cardExportDesc');
+    var msg = document.getElementById('cardExportModalMsg');
+    var copyBtn = document.getElementById('cardExportCopyBtn');
+    var exportBtn = document.getElementById('cardExportExportBtn');
+    var cancelBtn = document.getElementById('cardExportCancelBtn');
+    var text = cards.join('\n');
+    var prefix = options.prefix || 'cards';
+    var projectId = options.projectId || 'batch';
+    var filename = prefix + '-' + projectId + '-' + Date.now() + '.txt';
+    if (desc) desc.textContent = '已成功生成 ' + cards.length + ' 张卡密，请选择复制到剪贴板、导出文件，或取消。';
+    if (msg) {
+        msg.textContent = '';
+        msg.className = 'settings-msg';
+    }
+    modal.classList.remove('hidden');
+
+    function setModalMessage(content, type) {
+        if (!msg) return;
+        msg.textContent = content || '';
+        msg.className = 'settings-msg' + (type ? ' ' + type : '');
+    }
+
+    var copyHandler = async function () {
+        copyBtn.disabled = true;
+        try {
+            await copyText(text);
+            setModalMessage('已复制 ' + cards.length + ' 条卡密到剪贴板。', 'success');
+            setTimeout(closeCardExportModal, 900);
+        } catch (error) {
+            setModalMessage('复制失败，请手动复制。', 'error');
+        } finally {
+            copyBtn.disabled = false;
+        }
+    };
+    var exportHandler = function () {
+        exportTextFile(filename, text);
+        setModalMessage('已导出 ' + cards.length + ' 条卡密。', 'success');
+        setTimeout(closeCardExportModal, 900);
+    };
+    var cancelHandler = function () {
+        closeCardExportModal();
+    };
+
+    copyBtn.onclick = copyHandler;
+    exportBtn.onclick = exportHandler;
+    cancelBtn.onclick = cancelHandler;
+    modal.querySelectorAll('[data-card-export-close]').forEach(function (item) {
+        item.onclick = cancelHandler;
+    });
+}
+
+function handleCardCreateSuccess(result, board, options) {
+    var cards = Array.isArray(result.cards) ? result.cards : (Array.isArray(result.sample) ? result.sample : []);
+    if (board && cards.length) board.loadCards(true);
+    if (!cards.length) return;
+    showCardExportPrompt({
+        cards: cards,
+        prefix: options.prefix,
+        projectId: options.projectId,
+    });
+}
+
 var haozhuCardBoard = initCardBoard({
     provider: 'haozhu',
     cacheKey: 'jmweb_card_filters_haozhu',
@@ -692,7 +798,7 @@ if (cardCreateForm) {
         try {
             var result = await postAdmin('create_cards', { count: count, project_id: projectId });
             setCardMessage(msg, result.message || '制作完成', result.ok ? 'success' : 'error');
-            if (result.ok && haozhuCardBoard) haozhuCardBoard.loadCards(true);
+            handleCardCreateSuccess(result, haozhuCardBoard, { prefix: 'HZ', projectId: projectId });
         } catch (error) {
             setCardMessage(msg, '制作失败：' + error.message, 'error');
         } finally {
@@ -729,7 +835,7 @@ if (lubanCardCreateForm) {
         try {
             var result = await postAdmin('create_luban_cards', { count: count, project_id: projectId });
             setCardMessage(msg, result.message || '制作完成', result.ok ? 'success' : 'error');
-            if (result.ok && lubanCardBoard) lubanCardBoard.loadCards(true);
+            handleCardCreateSuccess(result, lubanCardBoard, { prefix: 'LB', projectId: projectId });
         } catch (error) {
             setCardMessage(msg, '制作失败：' + error.message, 'error');
         } finally {
