@@ -1,8 +1,8 @@
 {
-  "version": "1.0.41",
+  "version": "1.0.42",
   "name": "豪猪接码",
   "repo": "https://github.com/Aze0920/StarlumeSite",
   "branch": "main",
   "release_date": "2026-05-30",
-  "description": "后台配置更新：将豪猪密钥和接口信息归入豪猪管理页的接码平台配置，新增豪猪平台分组和其他接码平台预留扩展位。"
+  "description": "后台配置更新：豪猪管理页的配置默认隐藏，点击配置按钮展开；移除其他平台预留、添加其他平台、释放接口配置和多余提示文案。"
 }

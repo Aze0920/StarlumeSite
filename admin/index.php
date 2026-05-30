@@ -93,25 +93,24 @@ $jmwebSettings = jmweb_read_settings();
                     <div>
                         <span class="eyebrow">Haozhu Manager</span>
                         <h2>豪猪管理</h2>
-                        <p>集中管理豪猪项目检测、接口配置、兑换码生成和号码使用，后续可继续扩展其他接码平台。</p>
+                        <p>集中管理豪猪项目检测、接口配置、兑换码生成和号码使用。</p>
                     </div>
-                    <div class="settings-badge">项目管理</div>
+                    <div class="hero-actions">
+                        <button class="btn ghost" type="button" id="toggleHaozhuSettingsBtn">配置</button>
+                        <div class="settings-badge">项目管理</div>
+                    </div>
                 </div>
-                <form id="haozhuSettingsForm" class="settings-form modern-settings-form">
+                <form id="haozhuSettingsForm" class="settings-form modern-settings-form hidden">
                     <div class="settings-card platform-settings-card">
                         <div class="settings-card-head">
-                            <strong>接码平台配置</strong>
-                            <span>把不同接码平台的账号、密钥和接口统一放在这里</span>
-                        </div>
-                        <div class="platform-tabs">
-                            <button class="platform-tab active" type="button">豪猪</button>
-                            <button class="platform-tab disabled" type="button" disabled>添加其他平台</button>
+                            <strong>豪猪配置</strong>
+                            <span>豪猪账号、密钥和接口地址</span>
                         </div>
                         <div class="platform-config-panel">
                             <div class="platform-config-head">
                                 <div>
                                     <strong>豪猪</strong>
-                                    <p>当前启用的接码平台。这里填写豪猪账号、密钥、接口地址和释放接口参数。</p>
+                                    <p>这里填写豪猪账号、密钥和接口地址。</p>
                                 </div>
                                 <span class="settings-badge">当前启用</span>
                             </div>
@@ -127,17 +126,10 @@ $jmwebSettings = jmweb_read_settings();
                                 <label class="setting-field">豪猪 API 地址，一行一个
                                     <textarea name="haozhu_api_hosts" rows="3" maxlength="500" placeholder="api.haozhuma.com&#10;api.haozhuyun.com"><?= htmlspecialchars($jmwebSettings['haozhu_api_hosts'], ENT_QUOTES, 'UTF-8') ?></textarea>
                                 </label>
-                                <label class="setting-field">豪猪释放接口 api 参数，暂未填写官方接口时留空
-                                    <input name="haozhu_release_api" value="<?= htmlspecialchars($jmwebSettings['haozhu_release_api'], ENT_QUOTES, 'UTF-8') ?>" maxlength="60" placeholder="例如 releasePhone，确认官方文档后填写">
-                                </label>
                             </div>
                         </div>
-                        <div class="platform-add-placeholder">
-                            <strong>其他接码平台</strong>
-                            <span>预留扩展位置：后续可以添加平台名称、API 地址、账号、密钥、取号接口、验证码接口、释放接口等配置。</span>
-                        </div>
                         <div class="settings-actions inline-actions">
-                            <div id="haozhuSettingsMsg" class="settings-msg">修改豪猪平台配置后点击保存。</div>
+                            <div id="haozhuSettingsMsg" class="settings-msg"></div>
                             <div class="hero-actions">
                                 <button class="btn primary" type="submit">保存豪猪配置</button>
                             </div>

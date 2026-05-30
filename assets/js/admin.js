@@ -195,6 +195,14 @@ var settingsMsg = document.getElementById('settingsMsg');
 var resetSettingsBtn = document.getElementById('resetSettingsBtn');
 var haozhuSettingsForm = document.getElementById('haozhuSettingsForm');
 var haozhuSettingsMsg = document.getElementById('haozhuSettingsMsg');
+var toggleHaozhuSettingsBtn = document.getElementById('toggleHaozhuSettingsBtn');
+
+if (toggleHaozhuSettingsBtn && haozhuSettingsForm) {
+    toggleHaozhuSettingsBtn.addEventListener('click', function () {
+        var isHidden = haozhuSettingsForm.classList.toggle('hidden');
+        toggleHaozhuSettingsBtn.textContent = isHidden ? '配置' : '收起配置';
+    });
+}
 
 if (settingsForm) {
     settingsForm.addEventListener('submit', async function (event) {
