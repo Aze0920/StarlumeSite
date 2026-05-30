@@ -193,9 +193,10 @@ try {
         return $text;
     }
 
-    function jmweb_generate_card_no($projectId)
+    function jmweb_generate_card_no($projectId, $provider = 'haozhu')
     {
-        return 'HZ-' . $projectId . '-' . jmweb_random_card_part(4) . '-' . jmweb_random_card_part(4) . '-' . jmweb_random_card_part(4);
+        $prefix = $provider === 'luban' ? 'LB' : 'HZ';
+        return $prefix . '-' . $projectId . '-' . jmweb_random_card_part(4) . '-' . jmweb_random_card_part(4) . '-' . jmweb_random_card_part(4);
     }
 
     function jmweb_clean_project_id($projectId)
@@ -334,6 +335,87 @@ try {
         );
     }
 
+    function jmweb_luban_apikey($settings)
+    {
+        $apikey = isset($settings['luban_apikey']) ? trim((string) $settings['luban_apikey']) : '';
+        if ($apikey === '') {
+            return array('ok' => false, 'message' => '请先填写鲁班接码 APIKEY。');
+        }
+        return array('ok' => true, 'apikey' => $apikey);
+    }
+
+    function jmweb_luban_url($path, $params)
+    {
+        return 'https://lubansms.com/v2/api/' . $path . '?' . http_build_query($params);
+    }
+
+    function jmweb_luban_json_request($path, $params)
+    {
+        $url = jmweb_luban_url($path, $params);
+        $raw = jmweb_fetch_url($url);
+        $json = $raw !== false ? json_decode($raw, true) : null;
+        return array($url, $raw, is_array($json) ? $json : array());
+    }
+
+    function jmweb_luban_check_project($projectId)
+    {
+        $settings = jmweb_read_settings();
+        $key = jmweb_luban_apikey($settings);
+        if (empty($key['ok'])) {
+            return $key;
+        }
+        list($url, $raw, $json) = jmweb_luban_json_request('getNumber', array(
+            'apikey' => $key['apikey'],
+            'service_id' => $projectId,
+        ));
+        if (!isset($json['code']) || (string) $json['code'] !== '0' || empty($json['number']) || empty($json['request_id'])) {
+            return array('ok' => false, 'message' => '鲁班项目ID检测失败：' . (isset($json['msg']) ? $json['msg'] : ($raw ? $raw : '取号接口无响应')));
+        }
+        $release = jmweb_luban_release_request($key['apikey'], (string) $json['request_id']);
+        return array(
+            'ok' => true,
+            'message' => '鲁班项目ID可用，测试取到手机号 ' . $json['number'] . '，编号 ' . $json['request_id'] . '。' . $release['message'],
+            'phone' => (string) $json['number'],
+            'request_id' => (string) $json['request_id'],
+            'release' => $release,
+        );
+    }
+
+    function jmweb_luban_release_request($apikey, $requestId)
+    {
+        if ($apikey === '' || $requestId === '') {
+            return array('ok' => false, 'message' => '释放参数为空。');
+        }
+        list($url, $raw, $json) = jmweb_luban_json_request('setStatus', array(
+            'apikey' => $apikey,
+            'request_id' => $requestId,
+            'status' => 'reject',
+        ));
+        $ok = isset($json['code']) && (string) $json['code'] === '0';
+        return array('ok' => $ok, 'message' => $ok ? '测试号码已释放。' : ('释放接口返回：' . (isset($json['msg']) ? $json['msg'] : ($raw ? $raw : '接口无响应'))));
+    }
+
+    function jmweb_luban_get_sms($apikey, $requestId)
+    {
+        list($url, $raw, $json) = jmweb_luban_json_request('getSms', array(
+            'apikey' => $apikey,
+            'request_id' => $requestId,
+        ));
+        if (isset($json['code']) && (string) $json['code'] === '0' && isset($json['msg']) && (string) $json['msg'] === 'success') {
+            return array('ok' => true, 'code' => isset($json['sms_code']) ? (string) $json['sms_code'] : '', 'sms' => isset($json['sms_msg']) ? (is_string($json['sms_msg']) ? (string) $json['sms_msg'] : json_encode($json['sms_msg'], JSON_UNESCAPED_UNICODE)) : '', 'message' => '成功', 'raw' => $raw);
+        }
+        return array('ok' => false, 'code' => '', 'sms' => '', 'message' => isset($json['msg']) ? (string) $json['msg'] : ($raw ? (string) $raw : '暂未收到验证码'), 'raw' => $raw);
+    }
+
+    function jmweb_card_provider($card)
+    {
+        $cardNo = isset($card['card_no']) ? strtoupper((string) $card['card_no']) : '';
+        if (strpos($cardNo, 'LB-') === 0) {
+            return 'luban';
+        }
+        return 'haozhu';
+    }
+
     function jmweb_card_allowed_limit($limit)
     {
         $allowed = array(10, 50, 100, 500, 1000, 5000, 10000);
@@ -459,6 +541,30 @@ try {
         }
 
         $settings = jmweb_read_settings();
+        $provider = jmweb_card_provider($card);
+        if ($provider === 'luban') {
+            $key = jmweb_luban_apikey($settings);
+            if (empty($key['ok'])) {
+                jmweb_api_json(array('ok' => false, 'message' => $key['message']));
+            }
+            list($url, $raw, $json) = jmweb_luban_json_request('getNumber', array(
+                'apikey' => $key['apikey'],
+                'service_id' => $card['project_id'],
+            ));
+            if (!isset($json['code']) || (string) $json['code'] !== '0' || empty($json['number']) || empty($json['request_id'])) {
+                jmweb_api_json(array('ok' => false, 'message' => '鲁班获取手机号失败：' . (isset($json['msg']) ? $json['msg'] : ($raw ? $raw : '接口无响应'))));
+            }
+            $expiresAt = $now + 240;
+            $update = $pdo->prepare('UPDATE jm_cards SET phone = ?, provider_uid = ?, provider_sid = ?, provider_host = ?, provider_token = ?, expires_at = ?, updated_at = ? WHERE id = ? AND status = ?');
+            $update->execute(array((string) $json['number'], (string) $json['request_id'], (string) $json['request_id'], 'lubansms.com', '', $expiresAt, $now, $card['id'], 'available'));
+            $card['phone'] = (string) $json['number'];
+            $card['provider_uid'] = (string) $json['request_id'];
+            $card['provider_sid'] = (string) $json['request_id'];
+            $card['provider_host'] = 'lubansms.com';
+            $card['provider_token'] = '';
+            $card['expires_at'] = $expiresAt;
+            jmweb_api_json(array('ok' => true, 'message' => '鲁班已获取手机号，请在 240 秒内等待验证码。', 'activation' => jmweb_public_activation_payload($card, '等待验证码', '', '')));
+        }
         $login = jmweb_haozhu_login($settings);
         if (empty($login['ok'])) {
             jmweb_api_json(array('ok' => false, 'message' => $login['message']));
@@ -503,6 +609,27 @@ try {
             jmweb_api_json(array('ok' => false, 'expired' => true, 'message' => '240 秒已到，可以更换号码。', 'activation' => jmweb_public_activation_payload($card, '已超时', '', '')));
         }
         $settings = jmweb_read_settings();
+        $provider = jmweb_card_provider($card);
+        if ($provider === 'luban') {
+            $key = jmweb_luban_apikey($settings);
+            if (empty($key['ok'])) {
+                jmweb_api_json(array('ok' => false, 'message' => $key['message']));
+            }
+            $requestId = !empty($card['provider_sid']) ? $card['provider_sid'] : $card['provider_uid'];
+            $sms = jmweb_luban_get_sms($key['apikey'], $requestId);
+            if (!empty($sms['ok'])) {
+                $now = time();
+                $update = $pdo->prepare('UPDATE jm_cards SET status = ?, sms_code = ?, sms_text = ?, used_at = ?, updated_at = ? WHERE id = ? AND status = ?');
+                $update->execute(array('used', $sms['code'], $sms['sms'], $now, $now, $card['id'], 'available'));
+                $card['status'] = 'used';
+                $card['sms_code'] = $sms['code'];
+                $card['sms_text'] = $sms['sms'];
+                $card['used_at'] = $now;
+                jmweb_api_json(array('ok' => true, 'received' => true, 'message' => '已收到验证码，兑换券已消费。', 'activation' => jmweb_public_activation_payload($card, '已激活', $sms['code'], $sms['sms'])));
+            }
+            jmweb_write_update_log('Luban getSms pending: project=' . $card['project_id'] . ', request_id=' . $requestId . ', msg=' . $sms['message'] . ', raw=' . (isset($sms['raw']) ? $sms['raw'] : ''));
+            jmweb_api_json(array('ok' => true, 'received' => false, 'message' => '暂未收到验证码。', 'activation' => jmweb_public_activation_payload($card, '等待验证码', '', '')));
+        }
         $login = jmweb_haozhu_login($settings);
         if (empty($login['ok'])) {
             jmweb_api_json(array('ok' => false, 'message' => $login['message']));
@@ -544,6 +671,16 @@ try {
         }
         if (!empty($card['expires_at']) && (int) $card['expires_at'] > time()) {
             jmweb_api_json(array('ok' => false, 'message' => '240 秒内持续获取验证码，暂不能更换号码。', 'activation' => jmweb_public_activation_payload($card, '等待验证码', '', '')));
+        }
+        $provider = jmweb_card_provider($card);
+        if ($provider === 'luban') {
+            $settings = jmweb_read_settings();
+            $key = jmweb_luban_apikey($settings);
+            if (!empty($key['ok'])) {
+                $requestId = !empty($card['provider_sid']) ? $card['provider_sid'] : $card['provider_uid'];
+                $release = jmweb_luban_release_request($key['apikey'], $requestId);
+                jmweb_write_update_log('Luban release result: request_id=' . $requestId . ', message=' . $release['message']);
+            }
         }
         $now = time();
         $update = $pdo->prepare('UPDATE jm_cards SET phone = ?, provider_uid = ?, provider_sid = ?, provider_host = ?, provider_token = ?, expires_at = 0, updated_at = ? WHERE id = ? AND status = ?');
@@ -607,6 +744,63 @@ try {
         $check = jmweb_haozhu_check_project($projectId);
         jmweb_log('检测豪猪码项目ID：' . $projectId . '，结果：' . (!empty($check['ok']) ? 'ok' : 'fail'));
         jmweb_api_json(array_merge(array('project_id' => $projectId), $check));
+    }
+
+    if ($action === 'check_luban_project') {
+        jmweb_require_admin();
+        $projectId = jmweb_clean_project_id(isset($_POST['project_id']) ? $_POST['project_id'] : '');
+        if ($projectId === '') {
+            jmweb_api_json(array('ok' => false, 'message' => '请输入正确的项目ID，只能是数字。'));
+        }
+        $check = jmweb_luban_check_project($projectId);
+        jmweb_log('检测鲁班接码项目ID：' . $projectId . '，结果：' . (!empty($check['ok']) ? 'ok' : 'fail'));
+        jmweb_api_json(array_merge(array('project_id' => $projectId), $check));
+    }
+
+    if ($action === 'create_luban_cards') {
+        jmweb_require_admin();
+        $projectId = jmweb_clean_project_id(isset($_POST['project_id']) ? $_POST['project_id'] : '');
+        if ($projectId === '') {
+            jmweb_api_json(array('ok' => false, 'message' => '请输入正确的项目ID，只能是数字。'));
+        }
+        $count = isset($_POST['count']) ? (int) $_POST['count'] : 0;
+        if ($count < 1) {
+            jmweb_api_json(array('ok' => false, 'message' => '生成数量不能小于 1。'));
+        }
+        if ($count > 10000) {
+            jmweb_api_json(array('ok' => false, 'message' => '一次最多只能制作 10000 张卡密。'));
+        }
+
+        $projectCheck = jmweb_luban_check_project($projectId);
+        if (empty($projectCheck['ok'])) {
+            jmweb_api_json(array('ok' => false, 'message' => $projectCheck['message']));
+        }
+
+        $pdo = jmweb_ensure_cards_table();
+        $insert = $pdo->prepare('INSERT IGNORE INTO jm_cards (card_no, project_id, status, created_at, updated_at) VALUES (?, ?, ?, ?, ?)');
+        $created = 0;
+        $cards = array();
+        $now = time();
+        $tries = 0;
+        while ($created < $count && $tries < ($count * 8 + 80)) {
+            $tries++;
+            $cardNo = jmweb_generate_card_no($projectId, 'luban');
+            $insert->execute(array($cardNo, $projectId, 'available', $now, $now));
+            if ($insert->rowCount() > 0) {
+                $created++;
+                if (count($cards) < 100) {
+                    $cards[] = $cardNo;
+                }
+            }
+        }
+
+        jmweb_log('管理员生成鲁班兑换码项目ID：' . $projectId . '，数量：' . $created);
+        jmweb_api_json(array(
+            'ok' => $created === $count,
+            'message' => $created === $count ? '已成功生成 ' . $created . ' 个鲁班兑换码，已逐条写入 jm_cards 独立兑换码表。' : '只成功生成 ' . $created . ' 个兑换码，请重试。',
+            'created' => $created,
+            'sample' => $cards,
+        ));
     }
 
     if ($action === 'create_cards') {

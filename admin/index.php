@@ -34,6 +34,7 @@ $jmwebSettings = jmweb_read_settings();
             <div class="side-menu-main">
                 <button class="side-link active" data-page="dashboard">控制台</button>
                 <button class="side-link" data-page="cards">豪猪管理</button>
+                <button class="side-link" data-page="luban-cards">鲁班接码</button>
                 <button class="side-link" data-page="settings">基本设置</button>
             </div>
             <div class="side-menu-bottom">
@@ -199,6 +200,76 @@ $jmwebSettings = jmweb_read_settings();
                             <span id="cardPageInfo">1 / 1</span>
                             <button class="btn ghost" type="button" id="cardNextPage">下一页</button>
                         </div>
+                    </section>
+                </div>
+            </section>
+
+            <section class="admin-page hidden" id="page-luban-cards">
+                <div class="settings-hero-card card-hero-card">
+                    <div>
+                        <span class="eyebrow">Luban Sms</span>
+                        <h2>鲁班接码</h2>
+                        <p>独立管理鲁班接码 APIKEY、项目检测、兑换码生成和短信接收。</p>
+                    </div>
+                    <div class="hero-actions">
+                        <button class="btn ghost" type="button" id="toggleLubanSettingsBtn">配置</button>
+                        <div class="settings-badge">独立制卡</div>
+                    </div>
+                </div>
+                <form id="lubanSettingsForm" class="settings-form modern-settings-form hidden">
+                    <div class="settings-card platform-settings-card">
+                        <div class="settings-card-head">
+                            <strong>鲁班接码配置</strong>
+                            <span>只需要填写鲁班 APIKEY</span>
+                        </div>
+                        <div class="platform-config-panel">
+                            <div class="platform-config-head">
+                                <div>
+                                    <strong>鲁班接码</strong>
+                                    <p>接口地址固定为 lubansms.com，request_id 会作为编号/项目请求标识保存。</p>
+                                </div>
+                                <span class="settings-badge">Luban Sms</span>
+                            </div>
+                            <div class="settings-grid">
+                                <label class="setting-field">鲁班 APIKEY
+                                    <input name="luban_apikey" type="password" value="" maxlength="160" placeholder="<?= !empty($jmwebSettings['luban_apikey']) ? '已保存，留空不修改' : '请输入鲁班 APIKEY' ?>" autocomplete="new-password">
+                                </label>
+                            </div>
+                        </div>
+                        <div class="settings-actions inline-actions">
+                            <div id="lubanSettingsMsg" class="settings-msg"></div>
+                            <div class="hero-actions">
+                                <button class="btn primary" type="submit">保存鲁班配置</button>
+                            </div>
+                        </div>
+                    </div>
+                </form>
+                <div class="cards-workspace">
+                    <section class="settings-card card-create-panel">
+                        <div class="settings-card-head">
+                            <strong>生成鲁班兑换码</strong>
+                            <span>最多 10000 张</span>
+                        </div>
+                        <form id="lubanCardCreateForm" class="card-create-form">
+                            <label class="setting-field">项目ID / service_id
+                                <input name="project_id" id="lubanCardProjectId" inputmode="numeric" placeholder="请输入鲁班 service_id">
+                            </label>
+                            <button class="btn ghost full" type="button" id="checkLubanProjectBtn">检测项目ID</button>
+                            <label class="setting-field">制作数量
+                                <input name="count" type="number" min="1" max="10000" value="10" placeholder="请输入制作数量">
+                            </label>
+                            <button class="btn primary full" type="submit">开始生成</button>
+                            <div id="lubanCardCreateMsg" class="settings-msg">请输入项目ID并先检测可用性。</div>
+                        </form>
+                    </section>
+                    <section class="settings-card card-list-panel">
+                        <div class="card-list-toolbar">
+                            <div>
+                                <strong>鲁班卡密提示</strong>
+                                <span>鲁班卡密以 LB- 开头，并写入独立编号前缀</span>
+                            </div>
+                        </div>
+                        <p class="muted">生成后可在“豪猪管理”的卡密详情列表统一搜索、复制、启用、禁用或删除。前台兑换会按 LB- 前缀自动走鲁班接码接口。</p>
                     </section>
                 </div>
             </section>

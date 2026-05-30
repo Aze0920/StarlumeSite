@@ -170,13 +170,18 @@ if (updateBtn) {
 
 function fillSettingsForm(settings) {
     if (!settings) return;
-    [document.getElementById('settingsForm'), document.getElementById('haozhuSettingsForm')].forEach(function (form) {
+    [document.getElementById('settingsForm'), document.getElementById('haozhuSettingsForm'), document.getElementById('lubanSettingsForm')].forEach(function (form) {
         if (!form) return;
         Object.keys(settings).forEach(function (key) {
             if (!form.elements[key]) return;
             if (key === 'haozhu_api_password') {
                 form.elements[key].value = '';
                 form.elements[key].placeholder = settings.haozhu_api_password_saved ? '已保存，留空不修改' : '请输入豪猪 API 密钥或密码';
+                return;
+            }
+            if (key === 'luban_apikey') {
+                form.elements[key].value = '';
+                form.elements[key].placeholder = settings.luban_apikey_saved ? '已保存，留空不修改' : '请输入鲁班 APIKEY';
                 return;
             }
             form.elements[key].value = settings[key];
@@ -196,11 +201,21 @@ var resetSettingsBtn = document.getElementById('resetSettingsBtn');
 var haozhuSettingsForm = document.getElementById('haozhuSettingsForm');
 var haozhuSettingsMsg = document.getElementById('haozhuSettingsMsg');
 var toggleHaozhuSettingsBtn = document.getElementById('toggleHaozhuSettingsBtn');
+var lubanSettingsForm = document.getElementById('lubanSettingsForm');
+var lubanSettingsMsg = document.getElementById('lubanSettingsMsg');
+var toggleLubanSettingsBtn = document.getElementById('toggleLubanSettingsBtn');
 
 if (toggleHaozhuSettingsBtn && haozhuSettingsForm) {
     toggleHaozhuSettingsBtn.addEventListener('click', function () {
         var isHidden = haozhuSettingsForm.classList.toggle('hidden');
         toggleHaozhuSettingsBtn.textContent = isHidden ? '配置' : '收起配置';
+    });
+}
+
+if (toggleLubanSettingsBtn && lubanSettingsForm) {
+    toggleLubanSettingsBtn.addEventListener('click', function () {
+        var isHidden = lubanSettingsForm.classList.toggle('hidden');
+        toggleLubanSettingsBtn.textContent = isHidden ? '配置' : '收起配置';
     });
 }
 
@@ -259,6 +274,39 @@ if (haozhuSettingsForm) {
             if (submitButton) {
                 submitButton.disabled = false;
                 submitButton.textContent = '保存豪猪配置';
+            }
+        }
+    });
+}
+
+function setLubanSettingsMessage(message, type) {
+    if (!lubanSettingsMsg) return;
+    lubanSettingsMsg.textContent = message;
+    lubanSettingsMsg.className = 'settings-msg' + (type ? ' ' + type : '');
+}
+
+if (lubanSettingsForm) {
+    lubanSettingsForm.addEventListener('submit', async function (event) {
+        event.preventDefault();
+        var submitButton = lubanSettingsForm.querySelector('button[type="submit"]');
+        if (submitButton) {
+            submitButton.disabled = true;
+            submitButton.textContent = '保存中...';
+        }
+        setLubanSettingsMessage('正在保存鲁班配置...');
+        var formData = new FormData(lubanSettingsForm);
+        var payload = {};
+        formData.forEach(function (value, key) { payload[key] = value; });
+        try {
+            var result = await postAdmin('save_settings', payload);
+            setLubanSettingsMessage(result.ok ? '鲁班配置已保存。' : (result.message || '保存失败'), result.ok ? 'success' : 'error');
+            if (result.ok && result.settings) fillSettingsForm(result.settings);
+        } catch (error) {
+            setLubanSettingsMessage('保存失败：' + error.message, 'error');
+        } finally {
+            if (submitButton) {
+                submitButton.disabled = false;
+                submitButton.textContent = '保存鲁班配置';
             }
         }
     });
@@ -519,6 +567,68 @@ if (cardCreateForm) {
                 button.disabled = false;
                 button.textContent = '开始生成';
             }
+        }
+    });
+}
+
+var lubanCardCreateForm = document.getElementById('lubanCardCreateForm');
+if (lubanCardCreateForm) {
+    lubanCardCreateForm.addEventListener('submit', async function (event) {
+        event.preventDefault();
+        var msg = document.getElementById('lubanCardCreateMsg');
+        var button = lubanCardCreateForm.querySelector('button[type="submit"]');
+        var data = new FormData(lubanCardCreateForm);
+        var projectId = (data.get('project_id') || '').toString().trim();
+        var count = parseInt(data.get('count'), 10) || 0;
+        if (!/^\d{1,20}$/.test(projectId)) {
+            setCardMessage(msg, '请输入正确的项目ID，只能是数字。', 'error');
+            return;
+        }
+        if (count < 1 || count > 10000) {
+            setCardMessage(msg, '制作数量必须在 1 - 10000 之间。', 'error');
+            return;
+        }
+        if (button) {
+            button.disabled = true;
+            button.textContent = '制作中...';
+        }
+        setCardMessage(msg, '正在生成鲁班兑换码，请稍等...');
+        try {
+            var result = await postAdmin('create_luban_cards', { count: count, project_id: projectId });
+            setCardMessage(msg, result.message || '制作完成', result.ok ? 'success' : 'error');
+            if (result.ok) loadCards(true);
+        } catch (error) {
+            setCardMessage(msg, '制作失败：' + error.message, 'error');
+        } finally {
+            if (button) {
+                button.disabled = false;
+                button.textContent = '开始生成';
+            }
+        }
+    });
+}
+
+var checkLubanProjectBtn = document.getElementById('checkLubanProjectBtn');
+if (checkLubanProjectBtn) {
+    checkLubanProjectBtn.addEventListener('click', async function () {
+        var msg = document.getElementById('lubanCardCreateMsg');
+        var input = document.getElementById('lubanCardProjectId');
+        var projectId = input ? input.value.trim() : '';
+        if (!/^\d{1,20}$/.test(projectId)) {
+            setCardMessage(msg, '请输入正确的项目ID，只能是数字。', 'error');
+            return;
+        }
+        checkLubanProjectBtn.disabled = true;
+        checkLubanProjectBtn.textContent = '检测中...';
+        setCardMessage(msg, '正在调用鲁班接码并测试取号，请稍等...');
+        try {
+            var result = await postAdmin('check_luban_project', { project_id: projectId });
+            setCardMessage(msg, result.message || '检测完成', result.ok ? 'success' : 'error');
+        } catch (error) {
+            setCardMessage(msg, '检测失败：' + error.message, 'error');
+        } finally {
+            checkLubanProjectBtn.disabled = false;
+            checkLubanProjectBtn.textContent = '检测项目ID';
         }
     });
 }

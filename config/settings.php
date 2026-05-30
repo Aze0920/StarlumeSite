@@ -13,6 +13,7 @@ function jmweb_default_settings()
         'haozhu_api_account' => '',
         'haozhu_api_password' => '',
         'haozhu_release_api' => '',
+        'luban_apikey' => '',
     );
 }
 
@@ -73,7 +74,7 @@ function jmweb_clean_settings($input)
     $settings['exchange_expire_minutes'] = isset($input['exchange_expire_minutes']) ? (int) $input['exchange_expire_minutes'] : (isset($current['exchange_expire_minutes']) ? (int) $current['exchange_expire_minutes'] : (int) $defaults['exchange_expire_minutes']);
     $settings['cancel_wait_minutes'] = isset($input['cancel_wait_minutes']) ? (int) $input['cancel_wait_minutes'] : (isset($current['cancel_wait_minutes']) ? (int) $current['cancel_wait_minutes'] : (int) $defaults['cancel_wait_minutes']);
     $settings['active_sms_provider'] = isset($input['active_sms_provider']) ? trim((string) $input['active_sms_provider']) : (isset($current['active_sms_provider']) ? (string) $current['active_sms_provider'] : $defaults['active_sms_provider']);
-    if ($settings['active_sms_provider'] !== 'haozhu') {
+    if (!in_array($settings['active_sms_provider'], array('haozhu', 'luban'), true)) {
         $settings['active_sms_provider'] = 'haozhu';
     }
     $settings['haozhu_api_hosts'] = isset($input['haozhu_api_hosts']) ? jmweb_clean_multiline_hosts($input['haozhu_api_hosts']) : (isset($current['haozhu_api_hosts']) ? (string) $current['haozhu_api_hosts'] : $defaults['haozhu_api_hosts']);
@@ -87,6 +88,14 @@ function jmweb_clean_settings($input)
         $settings['haozhu_api_password'] = isset($current['haozhu_api_password']) ? (string) $current['haozhu_api_password'] : $defaults['haozhu_api_password'];
     }
     $settings['haozhu_release_api'] = isset($input['haozhu_release_api']) ? trim((string) $input['haozhu_release_api']) : (isset($current['haozhu_release_api']) ? (string) $current['haozhu_release_api'] : '');
+    if (isset($input['luban_apikey'])) {
+        $settings['luban_apikey'] = trim((string) $input['luban_apikey']);
+        if ($settings['luban_apikey'] === '' && !empty($current['luban_apikey'])) {
+            $settings['luban_apikey'] = (string) $current['luban_apikey'];
+        }
+    } else {
+        $settings['luban_apikey'] = isset($current['luban_apikey']) ? (string) $current['luban_apikey'] : $defaults['luban_apikey'];
+    }
 
     if ($settings['site_name'] === '') {
         $settings['site_name'] = $defaults['site_name'];
@@ -124,6 +133,12 @@ function jmweb_public_settings($settings)
         $safe['haozhu_api_password_saved'] = true;
     } else {
         $safe['haozhu_api_password_saved'] = false;
+    }
+    if (!empty($safe['luban_apikey'])) {
+        $safe['luban_apikey'] = '';
+        $safe['luban_apikey_saved'] = true;
+    } else {
+        $safe['luban_apikey_saved'] = false;
     }
     return $safe;
 }
