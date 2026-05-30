@@ -91,16 +91,16 @@ $jmwebSettings = jmweb_read_settings();
             <section class="admin-page hidden" id="page-cards">
                 <div class="settings-hero-card card-hero-card">
                     <div>
-                        <span class="eyebrow">Card Center</span>
-                        <h2>制作卡密</h2>
-                        <p>卡密格式为 <b>HZ-项目ID-XXXX-XXXX-XXXX</b>，制作前会先检测项目ID是否可以取号。</p>
+                        <span class="eyebrow">Haozhu Manager</span>
+                        <h2>豪猪管理</h2>
+                        <p>集中管理豪猪项目检测、兑换码生成和号码接口配置，先在“基本设置”中填写 API 信息后再使用。</p>
                     </div>
-                    <div class="settings-badge">项目ID卡密</div>
+                    <div class="settings-badge">项目管理</div>
                 </div>
                 <div class="cards-workspace">
                     <section class="settings-card card-create-panel">
                         <div class="settings-card-head">
-                            <strong>制作卡密</strong>
+                            <strong>生成兑换码</strong>
                             <span>最多 10000 张</span>
                         </div>
                         <form id="cardCreateForm" class="card-create-form">
@@ -111,8 +111,8 @@ $jmwebSettings = jmweb_read_settings();
                             <label class="setting-field">制作数量
                                 <input name="count" type="number" min="1" max="10000" value="10" placeholder="请输入制作数量">
                             </label>
-                            <button class="btn primary full" type="submit">开始制作</button>
-                            <div id="cardCreateMsg" class="settings-msg">卡密格式：HZ-项目ID-XXXX-XXXX-XXXX</div>
+                            <button class="btn primary full" type="submit">开始生成</button>
+                            <div id="cardCreateMsg" class="settings-msg">请输入项目ID并先检测可用性。</div>
                         </form>
                         <div class="card-stats" id="cardStats">
                             <div><strong>0</strong><span>全部</span></div>
@@ -204,8 +204,8 @@ $jmwebSettings = jmweb_read_settings();
                     </div>
                     <div class="settings-card">
                         <div class="settings-card-head">
-                            <strong>豪猪码 API 配置</strong>
-                            <span>用于检测项目ID和后续真实取号</span>
+                            <strong>豪猪接口配置</strong>
+                            <span>用于检测项目ID、取号和接收验证码</span>
                         </div>
                         <div class="settings-grid two">
                             <label class="setting-field">API 账号

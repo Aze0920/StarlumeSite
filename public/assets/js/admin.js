@@ -462,7 +462,7 @@ if (cardCreateForm) {
             button.disabled = true;
             button.textContent = '制作中...';
         }
-        setCardMessage(msg, '正在制作卡密，请稍等...');
+        setCardMessage(msg, '正在生成兑换码，请稍等...');
         try {
             var result = await postAdmin('create_cards', { count: count, project_id: projectId });
             setCardMessage(msg, result.message || '制作完成', result.ok ? 'success' : 'error');
@@ -472,7 +472,7 @@ if (cardCreateForm) {
         } finally {
             if (button) {
                 button.disabled = false;
-                button.textContent = '开始制作';
+                button.textContent = '开始生成';
             }
         }
     });
@@ -490,7 +490,7 @@ if (checkProjectBtn) {
         }
         checkProjectBtn.disabled = true;
         checkProjectBtn.textContent = '检测中...';
-        setCardMessage(msg, '正在登录豪猪码并测试取号，请稍等...');
+        setCardMessage(msg, '正在登录豪猪并测试取号，请稍等...');
         try {
             var result = await postAdmin('check_haozhu_project', { project_id: projectId });
             setCardMessage(msg, result.message || '检测完成', result.ok ? 'success' : 'error');

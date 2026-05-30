@@ -646,10 +646,10 @@ try {
             }
         }
 
-        jmweb_log('管理员制作卡密项目ID：' . $projectId . '，数量：' . $created);
+        jmweb_log('管理员生成兑换码项目ID：' . $projectId . '，数量：' . $created);
         jmweb_api_json(array(
             'ok' => $created === $count,
-            'message' => $created === $count ? '已成功制作 ' . $created . ' 张卡密，已逐条写入 jm_cards 独立卡密表。' : '只成功制作 ' . $created . ' 张卡密，请重试。',
+            'message' => $created === $count ? '已成功生成 ' . $created . ' 个兑换码，已逐条写入 jm_cards 独立兑换码表。' : '只成功生成 ' . $created . ' 个兑换码，请重试。',
             'created' => $created,
             'sample' => $cards,
         ));
