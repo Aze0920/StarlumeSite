@@ -1,8 +1,8 @@
 {
-  "version": "1.0.40",
+  "version": "1.0.41",
   "name": "豪猪接码",
   "repo": "https://github.com/Aze0920/StarlumeSite",
   "branch": "main",
   "release_date": "2026-05-30",
-  "description": "后台文案更新：卡密制作入口调整为豪猪管理，移除顶部卡密格式说明，优化豪猪接口配置和兑换码生成提示。"
+  "description": "后台配置更新：将豪猪密钥和接口信息归入豪猪管理页的接码平台配置，新增豪猪平台分组和其他接码平台预留扩展位。"
 }
