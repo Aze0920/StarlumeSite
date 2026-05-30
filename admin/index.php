@@ -33,7 +33,7 @@ $jmwebSettings = jmweb_read_settings();
             <a class="brand" href="../"><span class="brand-mark">S</span><span data-setting-display="site_name"><?= htmlspecialchars($jmwebSettings['site_name'], ENT_QUOTES, 'UTF-8') ?></span></a>
             <div class="side-menu-main">
                 <button class="side-link active" data-page="dashboard">控制台</button>
-                <button class="side-link" data-page="cards">制作卡密</button>
+                <button class="side-link" data-page="cards">豪猪管理</button>
                 <button class="side-link" data-page="settings">基本设置</button>
             </div>
             <div class="side-menu-bottom">
