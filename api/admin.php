@@ -407,6 +407,58 @@ try {
         return array('ok' => false, 'code' => '', 'sms' => '', 'message' => isset($json['msg']) ? (string) $json['msg'] : ($raw ? (string) $raw : '暂未收到验证码'), 'raw' => $raw);
     }
 
+    function jmweb_luban_country_code_from_history($apikey, $requestId)
+    {
+        $requestId = (string) $requestId;
+        if ($apikey === '' || $requestId === '') {
+            return '';
+        }
+        for ($page = 1; $page <= 3; $page++) {
+            list($url, $raw, $json) = jmweb_luban_json_request('smsHistory', array(
+                'apikey' => $apikey,
+                'language' => 'en',
+                'page' => $page,
+            ));
+            if (!isset($json['code']) || (string) $json['code'] !== '0' || !isset($json['msg']) || !is_array($json['msg'])) {
+                jmweb_write_update_log('Luban smsHistory country lookup failed: page=' . $page . ', raw=' . ($raw ? $raw : ''));
+                continue;
+            }
+            foreach ($json['msg'] as $row) {
+                if (!is_array($row) || !isset($row['request_id']) || (string) $row['request_id'] !== $requestId) {
+                    continue;
+                }
+                return jmweb_phone_country_from_payload($row);
+            }
+        }
+        return '';
+    }
+
+    function jmweb_luban_country_code_from_service($apikey, $serviceId)
+    {
+        $serviceId = (string) $serviceId;
+        if ($apikey === '' || $serviceId === '') {
+            return '';
+        }
+        for ($page = 1; $page <= 5; $page++) {
+            list($url, $raw, $json) = jmweb_luban_json_request('List', array(
+                'apikey' => $apikey,
+                'language' => 'en',
+                'page' => $page,
+            ));
+            if (!isset($json['code']) || (string) $json['code'] !== '0' || !isset($json['msg']) || !is_array($json['msg'])) {
+                jmweb_write_update_log('Luban service country lookup failed: page=' . $page . ', raw=' . ($raw ? $raw : ''));
+                continue;
+            }
+            foreach ($json['msg'] as $row) {
+                if (!is_array($row) || !isset($row['service_id']) || (string) $row['service_id'] !== $serviceId) {
+                    continue;
+                }
+                return jmweb_phone_country_from_payload($row);
+            }
+        }
+        return '';
+    }
+
     function jmweb_card_provider($card)
     {
         $cardNo = isset($card['card_no']) ? strtoupper((string) $card['card_no']) : '';
@@ -493,7 +545,7 @@ try {
         $now = time();
         $receivedAt = !empty($card['used_at']) ? (int) $card['used_at'] : 0;
         $expireAt = !empty($card['expires_at']) ? (int) $card['expires_at'] : ($now + 240);
-        $phoneParts = jmweb_phone_public_parts(isset($card['phone']) ? $card['phone'] : '');
+        $phoneParts = jmweb_phone_public_parts(isset($card['phone']) ? $card['phone'] : '', isset($card['phone_country']) ? $card['phone_country'] : '');
         return array(
             'card_id' => (int) $card['id'],
             'card_no' => $card['card_no'],
@@ -569,9 +621,18 @@ try {
                 jmweb_api_json(array('ok' => false, 'message' => '鲁班获取手机号失败：' . (isset($json['msg']) ? $json['msg'] : ($raw ? $raw : '接口无响应'))));
             }
             $expiresAt = $now + 240;
-            $update = $pdo->prepare('UPDATE jm_cards SET phone = ?, provider_uid = ?, provider_sid = ?, provider_host = ?, provider_token = ?, expires_at = ?, updated_at = ? WHERE id = ? AND status = ?');
-            $update->execute(array((string) $json['number'], (string) $json['request_id'], (string) $json['request_id'], 'lubansms.com', '', $expiresAt, $now, $card['id'], 'available'));
+            jmweb_write_update_log('Luban getNumber raw: ' . $raw);
+            $phoneCountry = jmweb_phone_country_from_payload($json);
+            if ($phoneCountry === '') {
+                $phoneCountry = jmweb_luban_country_code_from_history($key['apikey'], (string) $json['request_id']);
+            }
+            if ($phoneCountry === '') {
+                $phoneCountry = jmweb_luban_country_code_from_service($key['apikey'], $card['project_id']);
+            }
+            $update = $pdo->prepare('UPDATE jm_cards SET phone = ?, phone_country = ?, provider_uid = ?, provider_sid = ?, provider_host = ?, provider_token = ?, expires_at = ?, updated_at = ? WHERE id = ? AND status = ?');
+            $update->execute(array((string) $json['number'], $phoneCountry, (string) $json['request_id'], (string) $json['request_id'], 'lubansms.com', '', $expiresAt, $now, $card['id'], 'available'));
             $card['phone'] = (string) $json['number'];
+            $card['phone_country'] = $phoneCountry;
             $card['provider_uid'] = (string) $json['request_id'];
             $card['provider_sid'] = (string) $json['request_id'];
             $card['provider_host'] = 'lubansms.com';
@@ -592,9 +653,12 @@ try {
             jmweb_api_json(array('ok' => false, 'message' => '获取手机号失败：' . (isset($json['msg']) ? $json['msg'] : ($raw ? $raw : '接口无响应'))));
         }
         $expiresAt = $now + 240;
-        $update = $pdo->prepare('UPDATE jm_cards SET phone = ?, provider_uid = ?, provider_sid = ?, provider_host = ?, provider_token = ?, expires_at = ?, updated_at = ? WHERE id = ? AND status = ?');
-        $update->execute(array((string) $json['phone'], isset($json['uid']) ? (string) $json['uid'] : '', isset($json['sid']) ? (string) $json['sid'] : $card['project_id'], $login['host'], $login['token'], $expiresAt, $now, $card['id'], 'available'));
+        jmweb_write_update_log('Haozhu getPhone raw: ' . $raw);
+        $phoneCountry = jmweb_phone_country_from_payload($json);
+        $update = $pdo->prepare('UPDATE jm_cards SET phone = ?, phone_country = ?, provider_uid = ?, provider_sid = ?, provider_host = ?, provider_token = ?, expires_at = ?, updated_at = ? WHERE id = ? AND status = ?');
+        $update->execute(array((string) $json['phone'], $phoneCountry, isset($json['uid']) ? (string) $json['uid'] : '', isset($json['sid']) ? (string) $json['sid'] : $card['project_id'], $login['host'], $login['token'], $expiresAt, $now, $card['id'], 'available'));
         $card['phone'] = (string) $json['phone'];
+        $card['phone_country'] = $phoneCountry;
         $card['provider_uid'] = isset($json['uid']) ? (string) $json['uid'] : '';
         $card['provider_sid'] = isset($json['sid']) ? (string) $json['sid'] : $card['project_id'];
         $card['provider_host'] = $login['host'];
@@ -697,8 +761,8 @@ try {
             }
         }
         $now = time();
-        $update = $pdo->prepare('UPDATE jm_cards SET phone = ?, provider_uid = ?, provider_sid = ?, provider_host = ?, provider_token = ?, expires_at = 0, updated_at = ? WHERE id = ? AND status = ?');
-        $update->execute(array('', '', '', '', '', $now, $card['id'], 'available'));
+        $update = $pdo->prepare('UPDATE jm_cards SET phone = ?, phone_country = ?, provider_uid = ?, provider_sid = ?, provider_host = ?, provider_token = ?, expires_at = 0, updated_at = ? WHERE id = ? AND status = ?');
+        $update->execute(array('', '', '', '', '', '', $now, $card['id'], 'available'));
         jmweb_api_json(array('ok' => true, 'message' => '已取消当前号码，可以重新兑换更换手机号。'));
     }
 
@@ -902,7 +966,7 @@ try {
         }
         $offset = ($page - 1) * $limit;
 
-        $listSql = 'SELECT id, card_no, project_id, status, phone, sms_code, sms_text, provider_uid, provider_sid, used_at, disabled_at, created_at, updated_at FROM jm_cards' . $whereSql . ' ORDER BY id DESC LIMIT ' . (int) $limit . ' OFFSET ' . (int) $offset;
+        $listSql = 'SELECT id, card_no, project_id, status, phone, phone_country, sms_code, sms_text, provider_uid, provider_sid, used_at, disabled_at, created_at, updated_at FROM jm_cards' . $whereSql . ' ORDER BY id DESC LIMIT ' . (int) $limit . ' OFFSET ' . (int) $offset;
         $listStmt = $pdo->prepare($listSql);
         $listStmt->execute($params);
 

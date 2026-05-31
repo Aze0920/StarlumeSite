@@ -64,9 +64,14 @@
         '7', '1'
     ].sort(function (a, b) { return b.length - a.length; });
 
+    function isChinaMobileLocal(digits) {
+        return /^1[3-9]\d{9}$/.test(digits);
+    }
+
     function phoneWithoutCountryCode(value) {
         var digits = phoneDigitsOnly(value);
         if (!digits) return '';
+        if (isChinaMobileLocal(digits)) return digits;
         for (var i = 0; i < phoneCountryCodes.length; i++) {
             var code = phoneCountryCodes[i];
             if (digits.indexOf(code) === 0) {
@@ -80,6 +85,8 @@
     function detectPhoneCountryCode(value) {
         var digits = phoneDigitsOnly(value);
         if (!digits) return '';
+        if (isChinaMobileLocal(digits)) return '86';
+        if (digits.length === 13 && digits.indexOf('86') === 0 && isChinaMobileLocal(digits.slice(2))) return '86';
         for (var i = 0; i < phoneCountryCodes.length; i++) {
             var code = phoneCountryCodes[i];
             if (digits.indexOf(code) === 0) {
@@ -101,9 +108,10 @@
         currentActivation = data;
         if (activationPanel) activationPanel.classList.remove('hidden');
         var copyPhone = data.phone || phoneWithoutCountryCode(data.phone_display || '');
-        var displayPhone = data.phone_display || formatPhoneDisplay(copyPhone);
+        var displayPhone = data.phone_display || (data.phone_country && copyPhone ? ('+' + data.phone_country + ' ' + copyPhone) : formatPhoneDisplay(copyPhone));
         if (phoneNumber) phoneNumber.textContent = displayPhone || '-';
         currentActivation.phone = copyPhone;
+        currentActivation.phone_country = data.phone_country || detectPhoneCountryCode(displayPhone);
         if (activationState) activationState.textContent = data.state || '-';
         if (activationCode) activationCode.textContent = data.code || '等待中';
         if (data.is_used || data.received_at) {
