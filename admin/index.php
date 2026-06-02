@@ -372,7 +372,19 @@ $jmwebSettings = jmweb_read_settings();
                             <div><strong>0</strong><span>禁用</span></div>
                         </div>
                     </section>
-                    <section class="settings-card card-list-panel">
+                    <section class="settings-card card-list-panel yinuopp-mode-panel">
+                        <div class="card-list-toolbar">
+                            <div>
+                                <strong>一诺PP详情</strong>
+                                <span id="yinuoppModeSummary">请选择查看卡密详情或手机号详情</span>
+                            </div>
+                            <div class="hero-actions">
+                                <button class="btn primary" type="button" data-yinuopp-mode="cards">卡密详情</button>
+                                <button class="btn ghost" type="button" data-yinuopp-mode="numbers">手机号详情</button>
+                            </div>
+                        </div>
+                    </section>
+                    <section class="settings-card card-list-panel" id="yinuoppCardsPanel">
                         <div class="card-list-toolbar">
                             <div>
                                 <strong>一诺PP卡密详情</strong>
@@ -412,7 +424,7 @@ $jmwebSettings = jmweb_read_settings();
                             <button class="btn ghost" type="button" id="yinuoppCardNextPage">下一页</button>
                         </div>
                     </section>
-                    <section class="settings-card card-list-panel">
+                    <section class="settings-card card-list-panel hidden" id="yinuoppNumbersPanel">
                         <div class="card-list-toolbar">
                             <div>
                                 <strong>一诺PP手机号详情</strong>

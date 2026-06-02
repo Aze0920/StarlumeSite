@@ -1,8 +1,8 @@
 {
-  "version": "1.0.53",
+  "version": "1.0.54",
   "name": "豪猪接码",
   "repo": "https://github.com/Aze0920/StarlumeSite",
   "branch": "main",
   "release_date": "2026-06-03",
-  "description": "优化一诺PP为可循环复用手机号池，支持负载均衡分配、问题号记录、接码次数统计、手机号详情管理和6位验证码校验。"
+  "description": "优化一诺PP详情区域为卡片式模式切换，可在卡密详情和手机号详情之间选择查看。"
 }

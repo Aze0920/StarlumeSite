@@ -600,6 +600,34 @@ function initCardBoard(config) {
     return { loadCards: loadCards };
 }
 
+function initYinuoppModeSwitcher() {
+    var cardsPanel = document.getElementById('yinuoppCardsPanel');
+    var numbersPanel = document.getElementById('yinuoppNumbersPanel');
+    var summary = document.getElementById('yinuoppModeSummary');
+    var buttons = document.querySelectorAll('[data-yinuopp-mode]');
+    if (!cardsPanel || !numbersPanel || !buttons.length) return;
+    function setMode(mode) {
+        var showNumbers = mode === 'numbers';
+        cardsPanel.classList.toggle('hidden', showNumbers);
+        numbersPanel.classList.toggle('hidden', !showNumbers);
+        buttons.forEach(function (button) {
+            var active = button.getAttribute('data-yinuopp-mode') === mode;
+            button.classList.toggle('primary', active);
+            button.classList.toggle('ghost', !active);
+        });
+        if (summary) summary.textContent = showNumbers ? '当前查看手机号详情，可管理删除手机号。' : '当前查看卡密详情，可复制、启用、禁用或删除卡密。';
+        try { localStorage.setItem('jmweb_yinuopp_detail_mode', mode); } catch (e) {}
+    }
+    buttons.forEach(function (button) {
+        button.addEventListener('click', function () {
+            setMode(button.getAttribute('data-yinuopp-mode') || 'cards');
+        });
+    });
+    var saved = 'cards';
+    try { saved = localStorage.getItem('jmweb_yinuopp_detail_mode') || 'cards'; } catch (e) { saved = 'cards'; }
+    setMode(saved === 'numbers' ? 'numbers' : 'cards');
+}
+
 function initYinuoppNumberBoard() {
     if (!document.getElementById('yinuoppNumberList')) return null;
     var state = { page: 1, pages: 1, limit: 10 };
@@ -938,6 +966,7 @@ var lubanCardBoard = initCardBoard({
     },
 });
 
+initYinuoppModeSwitcher();
 var yinuoppNumberBoard = initYinuoppNumberBoard();
 
 var yinuoppCardBoard = initCardBoard({
