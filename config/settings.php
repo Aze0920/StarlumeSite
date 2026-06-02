@@ -14,6 +14,7 @@ function jmweb_default_settings()
         'haozhu_api_password' => '',
         'haozhu_release_api' => '',
         'luban_apikey' => '',
+        'yinuopp_inventory' => '',
     );
 }
 
@@ -61,6 +62,32 @@ function jmweb_clean_multiline_hosts($value)
     return implode("\n", $hosts);
 }
 
+function jmweb_clean_yinuopp_inventory($value)
+{
+    $value = str_replace(array("\r\n", "\r"), "\n", (string) $value);
+    $lines = explode("\n", $value);
+    $clean = array();
+    foreach ($lines as $line) {
+        $line = trim($line);
+        if ($line === '' || strpos($line, '|') === false) {
+            continue;
+        }
+        list($phone, $api) = array_map('trim', explode('|', $line, 2));
+        if ($phone === '' || $api === '' || !preg_match('#^https?://#i', $api)) {
+            continue;
+        }
+        $phone = preg_replace('/[^\d+]/', '', $phone);
+        if ($phone === '' || strpos($phone, '+') !== 0) {
+            continue;
+        }
+        $item = $phone . '|' . $api;
+        if (!in_array($item, $clean, true)) {
+            $clean[] = $item;
+        }
+    }
+    return implode("\n", $clean);
+}
+
 function jmweb_clean_settings($input)
 {
     $defaults = jmweb_default_settings();
@@ -88,6 +115,7 @@ function jmweb_clean_settings($input)
         $settings['haozhu_api_password'] = isset($current['haozhu_api_password']) ? (string) $current['haozhu_api_password'] : $defaults['haozhu_api_password'];
     }
     $settings['haozhu_release_api'] = isset($input['haozhu_release_api']) ? trim((string) $input['haozhu_release_api']) : (isset($current['haozhu_release_api']) ? (string) $current['haozhu_release_api'] : '');
+    $settings['yinuopp_inventory'] = isset($input['yinuopp_inventory']) ? jmweb_clean_yinuopp_inventory($input['yinuopp_inventory']) : (isset($current['yinuopp_inventory']) ? (string) $current['yinuopp_inventory'] : $defaults['yinuopp_inventory']);
     if (isset($input['luban_apikey'])) {
         $settings['luban_apikey'] = trim((string) $input['luban_apikey']);
         if ($settings['luban_apikey'] === '' && !empty($current['luban_apikey'])) {

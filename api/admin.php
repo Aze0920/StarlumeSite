@@ -195,7 +195,8 @@ try {
 
     function jmweb_generate_card_no($projectId, $provider = 'haozhu')
     {
-        $prefix = $provider === 'luban' ? 'LB' : 'HZ';
+        $prefixMap = array('haozhu' => 'HZ', 'luban' => 'LB', 'yinuopp' => 'YN');
+        $prefix = isset($prefixMap[$provider]) ? $prefixMap[$provider] : 'HZ';
         return $prefix . '-' . $projectId . '-' . jmweb_random_card_part(4) . '-' . jmweb_random_card_part(4) . '-' . jmweb_random_card_part(4);
     }
 
@@ -459,11 +460,66 @@ try {
         return '';
     }
 
+    function jmweb_yinuopp_inventory_items($inventory)
+    {
+        $items = array();
+        $inventory = str_replace(array("\r\n", "\r"), "\n", (string) $inventory);
+        foreach (explode("\n", $inventory) as $line) {
+            $line = trim($line);
+            if ($line === '' || strpos($line, '|') === false) {
+                continue;
+            }
+            list($phone, $api) = array_map('trim', explode('|', $line, 2));
+            $phone = preg_replace('/[^\d+]/', '', $phone);
+            if ($phone === '' || strpos($phone, '+') !== 0 || $api === '' || !preg_match('#^https?://#i', $api)) {
+                continue;
+            }
+            $parts = jmweb_phone_public_parts($phone);
+            if ($parts['phone'] === '') {
+                continue;
+            }
+            $items[] = array('line' => $phone . '|' . $api, 'phone' => $phone, 'local' => $parts['phone'], 'country' => $parts['phone_country'], 'api' => $api);
+        }
+        return $items;
+    }
+
+    function jmweb_yinuopp_get_sms($apiUrl)
+    {
+        $raw = jmweb_fetch_url($apiUrl);
+        $text = $raw !== false ? trim((string) $raw) : '';
+        $json = $text !== '' ? json_decode($text, true) : null;
+        if (is_array($json)) {
+            $fields = array('code', 'sms_code', 'yzm', 'otp', 'verify_code', 'verification_code');
+            foreach ($fields as $field) {
+                if (isset($json[$field]) && preg_match('/\d{4,8}/', (string) $json[$field], $match)) {
+                    return array('ok' => true, 'code' => $match[0], 'sms' => is_string($json[$field]) ? (string) $json[$field] : $text, 'message' => '成功', 'raw' => $text);
+                }
+            }
+            $smsFields = array('sms', 'msg', 'message', 'data', 'content', 'text');
+            foreach ($smsFields as $field) {
+                if (isset($json[$field])) {
+                    $value = is_string($json[$field]) ? (string) $json[$field] : json_encode($json[$field], JSON_UNESCAPED_UNICODE);
+                    if (preg_match('/\d{4,8}/', $value, $match)) {
+                        return array('ok' => true, 'code' => $match[0], 'sms' => $value, 'message' => '成功', 'raw' => $text);
+                    }
+                }
+            }
+            return array('ok' => false, 'code' => '', 'sms' => '', 'message' => isset($json['msg']) ? (string) $json['msg'] : '暂未收到验证码', 'raw' => $text);
+        }
+        if (preg_match('/\d{4,8}/', $text, $match)) {
+            return array('ok' => true, 'code' => $match[0], 'sms' => $text, 'message' => '成功', 'raw' => $text);
+        }
+        return array('ok' => false, 'code' => '', 'sms' => '', 'message' => $text !== '' ? $text : '暂未收到验证码', 'raw' => $text);
+    }
+
     function jmweb_card_provider($card)
     {
         $cardNo = isset($card['card_no']) ? strtoupper((string) $card['card_no']) : '';
         if (strpos($cardNo, 'LB-') === 0) {
             return 'luban';
+        }
+        if (strpos($cardNo, 'YN-') === 0) {
+            return 'yinuopp';
         }
         return 'haozhu';
     }
@@ -471,12 +527,14 @@ try {
     function jmweb_clean_card_provider($provider)
     {
         $provider = trim((string) $provider);
-        return in_array($provider, array('haozhu', 'luban'), true) ? $provider : '';
+        return in_array($provider, array('haozhu', 'luban', 'yinuopp'), true) ? $provider : '';
     }
 
     function jmweb_card_provider_prefix($provider)
     {
-        return $provider === 'luban' ? 'LB-' : 'HZ-';
+        if ($provider === 'luban') return 'LB-';
+        if ($provider === 'yinuopp') return 'YN-';
+        return 'HZ-';
     }
 
     function jmweb_card_allowed_limit($limit)
@@ -608,6 +666,18 @@ try {
 
         $settings = jmweb_read_settings();
         $provider = jmweb_card_provider($card);
+        if ($provider === 'yinuopp') {
+            if (empty($card['phone']) || empty($card['provider_token'])) {
+                jmweb_api_json(array('ok' => false, 'message' => '一诺PP库存卡未绑定号码或接码 API，请重新生成卡密。'));
+            }
+            $expiresAt = $now + 240;
+            $phoneCountry = !empty($card['phone_country']) ? $card['phone_country'] : jmweb_detect_phone_country_code($card['phone']);
+            $update = $pdo->prepare('UPDATE jm_cards SET phone_country = ?, expires_at = ?, updated_at = ? WHERE id = ? AND status = ?');
+            $update->execute(array($phoneCountry, $expiresAt, $now, $card['id'], 'available'));
+            $card['phone_country'] = $phoneCountry;
+            $card['expires_at'] = $expiresAt;
+            jmweb_api_json(array('ok' => true, 'message' => '一诺PP已分配手机号，请在 240 秒内等待验证码。', 'activation' => jmweb_public_activation_payload($card, '等待验证码', '', '')));
+        }
         if ($provider === 'luban') {
             $key = jmweb_luban_apikey($settings);
             if (empty($key['ok'])) {
@@ -688,6 +758,25 @@ try {
         }
         $settings = jmweb_read_settings();
         $provider = jmweb_card_provider($card);
+        if ($provider === 'yinuopp') {
+            $apiUrl = !empty($card['provider_token']) ? $card['provider_token'] : '';
+            if ($apiUrl === '') {
+                jmweb_api_json(array('ok' => false, 'message' => '一诺PP接码 API 为空。'));
+            }
+            $sms = jmweb_yinuopp_get_sms($apiUrl);
+            if (!empty($sms['ok'])) {
+                $now = time();
+                $update = $pdo->prepare('UPDATE jm_cards SET status = ?, sms_code = ?, sms_text = ?, used_at = ?, updated_at = ? WHERE id = ? AND status = ?');
+                $update->execute(array('used', $sms['code'], $sms['sms'], $now, $now, $card['id'], 'available'));
+                $card['status'] = 'used';
+                $card['sms_code'] = $sms['code'];
+                $card['sms_text'] = $sms['sms'];
+                $card['used_at'] = $now;
+                jmweb_api_json(array('ok' => true, 'received' => true, 'message' => '已收到验证码，兑换券已消费。', 'activation' => jmweb_public_activation_payload($card, '已激活', $sms['code'], $sms['sms'])));
+            }
+            jmweb_write_update_log('YinuoPP getSms pending: card=' . $card['card_no'] . ', phone=' . $card['phone'] . ', msg=' . $sms['message'] . ', raw=' . (isset($sms['raw']) ? $sms['raw'] : ''));
+            jmweb_api_json(array('ok' => true, 'received' => false, 'message' => '暂未收到验证码。', 'activation' => jmweb_public_activation_payload($card, '等待验证码', '', '')));
+        }
         if ($provider === 'luban') {
             $key = jmweb_luban_apikey($settings);
             if (empty($key['ok'])) {
@@ -751,6 +840,12 @@ try {
             jmweb_api_json(array('ok' => false, 'message' => '240 秒内持续获取验证码，暂不能更换号码。', 'activation' => jmweb_public_activation_payload($card, '等待验证码', '', '')));
         }
         $provider = jmweb_card_provider($card);
+        if ($provider === 'yinuopp') {
+            $now = time();
+            $update = $pdo->prepare('UPDATE jm_cards SET expires_at = 0, updated_at = ? WHERE id = ? AND status = ?');
+            $update->execute(array($now, $card['id'], 'available'));
+            jmweb_api_json(array('ok' => true, 'message' => '已取消当前一诺PP激活，可以重新兑换继续查询该号码。'));
+        }
         if ($provider === 'luban') {
             $settings = jmweb_read_settings();
             $key = jmweb_luban_apikey($settings);
@@ -833,6 +928,65 @@ try {
         $check = jmweb_luban_check_project($projectId);
         jmweb_log('检测鲁班接码项目ID：' . $projectId . '，结果：' . (!empty($check['ok']) ? 'ok' : 'fail'));
         jmweb_api_json(array_merge(array('project_id' => $projectId), $check));
+    }
+
+    if ($action === 'create_yinuopp_cards') {
+        jmweb_require_admin();
+        $count = isset($_POST['count']) ? (int) $_POST['count'] : 0;
+        if ($count < 1) {
+            jmweb_api_json(array('ok' => false, 'message' => '生成数量不能小于 1。'));
+        }
+        if ($count > 10000) {
+            jmweb_api_json(array('ok' => false, 'message' => '一次最多只能制作 10000 张卡密。'));
+        }
+        $settings = jmweb_read_settings();
+        $items = jmweb_yinuopp_inventory_items(isset($settings['yinuopp_inventory']) ? $settings['yinuopp_inventory'] : '');
+        if (count($items) < $count) {
+            jmweb_api_json(array('ok' => false, 'message' => '一诺PP可用库存不足，当前只有 ' . count($items) . ' 条。'));
+        }
+
+        $pdo = jmweb_ensure_cards_table();
+        $insert = $pdo->prepare('INSERT IGNORE INTO jm_cards (card_no, project_id, status, phone, phone_country, provider_host, provider_token, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)');
+        $created = 0;
+        $cards = array();
+        $usedLines = array();
+        $now = time();
+        $tries = 0;
+        foreach ($items as $item) {
+            if ($created >= $count) {
+                break;
+            }
+            $tries++;
+            $cardNo = jmweb_generate_card_no('PP', 'yinuopp');
+            $insert->execute(array($cardNo, 'PP', 'available', $item['phone'], $item['country'], 'yinuopp', $item['api'], $now, $now));
+            if ($insert->rowCount() > 0) {
+                $created++;
+                $cards[] = $cardNo;
+                $usedLines[] = $item['line'];
+            }
+            if ($tries > ($count * 8 + 80)) {
+                break;
+            }
+        }
+        if ($created > 0) {
+            $remaining = array();
+            foreach ($items as $item) {
+                if (!in_array($item['line'], $usedLines, true)) {
+                    $remaining[] = $item['line'];
+                }
+            }
+            $settings['yinuopp_inventory'] = implode("\n", $remaining);
+            jmweb_save_settings($settings);
+        }
+        jmweb_log('管理员生成一诺PP兑换码，数量：' . $created);
+        jmweb_api_json(array(
+            'ok' => $created === $count,
+            'message' => $created === $count ? '已成功生成 ' . $created . ' 个一诺PP兑换码，并从库存中扣除对应号码。' : '只成功生成 ' . $created . ' 个一诺PP兑换码，请检查库存后重试。',
+            'created' => $created,
+            'cards' => $cards,
+            'sample' => array_slice($cards, 0, 100),
+            'settings' => jmweb_public_settings(jmweb_read_settings()),
+        ));
     }
 
     if ($action === 'create_luban_cards') {

@@ -62,7 +62,7 @@ function jmweb_ensure_cards_table()
         `provider_uid` varchar(80) NOT NULL DEFAULT '',
         `provider_sid` varchar(80) NOT NULL DEFAULT '',
         `provider_host` varchar(120) NOT NULL DEFAULT '',
-        `provider_token` varchar(255) NOT NULL DEFAULT '',
+        `provider_token` varchar(1000) NOT NULL DEFAULT '',
         `sms_code` varchar(40) NOT NULL DEFAULT '',
         `sms_text` text NULL,
         `expires_at` int unsigned NOT NULL DEFAULT 0,
@@ -84,7 +84,7 @@ function jmweb_ensure_cards_table()
         'provider_uid' => "ALTER TABLE `jm_cards` ADD COLUMN `provider_uid` varchar(80) NOT NULL DEFAULT '' AFTER `phone_country`",
         'provider_sid' => "ALTER TABLE `jm_cards` ADD COLUMN `provider_sid` varchar(80) NOT NULL DEFAULT '' AFTER `provider_uid`",
         'provider_host' => "ALTER TABLE `jm_cards` ADD COLUMN `provider_host` varchar(120) NOT NULL DEFAULT '' AFTER `provider_sid`",
-        'provider_token' => "ALTER TABLE `jm_cards` ADD COLUMN `provider_token` varchar(255) NOT NULL DEFAULT '' AFTER `provider_host`",
+        'provider_token' => "ALTER TABLE `jm_cards` ADD COLUMN `provider_token` varchar(1000) NOT NULL DEFAULT '' AFTER `provider_host`",
         'sms_code' => "ALTER TABLE `jm_cards` ADD COLUMN `sms_code` varchar(40) NOT NULL DEFAULT '' AFTER `provider_token`",
         'sms_text' => "ALTER TABLE `jm_cards` ADD COLUMN `sms_text` text NULL AFTER `sms_code`",
         'expires_at' => "ALTER TABLE `jm_cards` ADD COLUMN `expires_at` int unsigned NOT NULL DEFAULT 0 AFTER `sms_text`",
@@ -97,6 +97,9 @@ function jmweb_ensure_cards_table()
 
     try {
         $pdo->exec('ALTER TABLE `jm_cards` MODIFY COLUMN `card_no` varchar(96) NOT NULL');
+    } catch (Exception $e) {}
+    try {
+        $pdo->exec('ALTER TABLE `jm_cards` MODIFY COLUMN `provider_token` varchar(1000) NOT NULL DEFAULT \'\'');
     } catch (Exception $e) {}
     try {
         $pdo->exec('ALTER TABLE `jm_cards` ADD KEY `idx_project_id` (`project_id`)');

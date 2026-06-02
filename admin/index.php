@@ -35,6 +35,7 @@ $jmwebSettings = jmweb_read_settings();
                 <button class="side-link active" data-page="dashboard">控制台</button>
                 <button class="side-link" data-page="cards">豪猪管理</button>
                 <button class="side-link" data-page="luban-cards">鲁班接码</button>
+                <button class="side-link" data-page="yinuopp-cards">一诺PP</button>
                 <button class="side-link" data-page="settings">基本设置</button>
             </div>
             <div class="side-menu-bottom">
@@ -306,6 +307,109 @@ $jmwebSettings = jmweb_read_settings();
                             <button class="btn ghost" type="button" id="lubanCardPrevPage">上一页</button>
                             <span id="lubanCardPageInfo">1 / 1</span>
                             <button class="btn ghost" type="button" id="lubanCardNextPage">下一页</button>
+                        </div>
+                    </section>
+                </div>
+            </section>
+
+            <section class="admin-page hidden" id="page-yinuopp-cards">
+                <div class="settings-hero-card card-hero-card">
+                    <div>
+                        <span class="eyebrow">Yinuo PP</span>
+                        <h2>一诺PP</h2>
+                        <p>通过手动库存管理号码和接码 API，一行一个库存，生成独立兑换码。</p>
+                    </div>
+                    <div class="hero-actions">
+                        <button class="btn ghost" type="button" id="toggleYinuoppSettingsBtn">配置</button>
+                        <div class="settings-badge">库存制卡</div>
+                    </div>
+                </div>
+                <form id="yinuoppSettingsForm" class="settings-form modern-settings-form hidden">
+                    <div class="settings-card platform-settings-card">
+                        <div class="settings-card-head">
+                            <strong>一诺PP库存配置</strong>
+                            <span>格式：区号手机号|接码API，一行一个</span>
+                        </div>
+                        <div class="platform-config-panel">
+                            <div class="platform-config-head">
+                                <div>
+                                    <strong>一诺PP</strong>
+                                    <p>例如：+16309199343|http://a.62-us.com/api/get_sms?key=df629911e2def8c3d93c0178006a432f</p>
+                                </div>
+                                <span class="settings-badge">手动库存</span>
+                            </div>
+                            <div class="settings-grid">
+                                <label class="setting-field">一诺PP库存，一行一个
+                                    <textarea name="yinuopp_inventory" rows="8" maxlength="20000" placeholder="+16309199343|http://a.62-us.com/api/get_sms?key=xxxx"><?= htmlspecialchars($jmwebSettings['yinuopp_inventory'], ENT_QUOTES, 'UTF-8') ?></textarea>
+                                </label>
+                            </div>
+                        </div>
+                        <div class="settings-actions inline-actions">
+                            <div id="yinuoppSettingsMsg" class="settings-msg"></div>
+                            <div class="hero-actions">
+                                <button class="btn primary" type="submit">保存一诺PP库存</button>
+                            </div>
+                        </div>
+                    </div>
+                </form>
+                <div class="cards-workspace">
+                    <section class="settings-card card-create-panel">
+                        <div class="settings-card-head">
+                            <strong>生成一诺PP兑换码</strong>
+                            <span>按库存数量生成</span>
+                        </div>
+                        <form id="yinuoppCardCreateForm" class="card-create-form">
+                            <label class="setting-field">制作数量
+                                <input name="count" type="number" min="1" max="10000" value="10" placeholder="不能超过当前库存">
+                            </label>
+                            <button class="btn primary full" type="submit">开始生成</button>
+                            <div id="yinuoppCardCreateMsg" class="settings-msg">请先在配置里添加库存，生成数量不能超过可用库存。</div>
+                        </form>
+                        <div class="card-stats" id="yinuoppCardStats">
+                            <div><strong>0</strong><span>全部</span></div>
+                            <div><strong>0</strong><span>可用</span></div>
+                            <div><strong>0</strong><span>已用</span></div>
+                            <div><strong>0</strong><span>禁用</span></div>
+                        </div>
+                    </section>
+                    <section class="settings-card card-list-panel">
+                        <div class="card-list-toolbar">
+                            <div>
+                                <strong>一诺PP卡密详情</strong>
+                                <span id="yinuoppCardListSummary">一列显示 10 个</span>
+                            </div>
+                            <div class="card-toolbar-controls">
+                                <select id="yinuoppCardLimitSelect">
+                                    <option value="10">10</option>
+                                    <option value="50">50</option>
+                                    <option value="100">100</option>
+                                    <option value="500">500</option>
+                                    <option value="1000">1000</option>
+                                    <option value="5000">5000</option>
+                                    <option value="10000">10000</option>
+                                </select>
+                                <input id="yinuoppCardKeyword" placeholder="搜索卡密">
+                            </div>
+                        </div>
+                        <div class="card-filter-row">
+                            <label><input type="checkbox" name="yinuopp_card_status" value="available" checked> 可用</label>
+                            <label><input type="checkbox" name="yinuopp_card_status" value="used" checked> 已用</label>
+                            <label><input type="checkbox" name="yinuopp_card_status" value="disabled" checked> 禁用</label>
+                            <button class="btn ghost" type="button" id="yinuoppCardRefreshBtn">刷新</button>
+                        </div>
+                        <div class="card-batch-row">
+                            <label><input type="checkbox" id="yinuoppCardSelectAll"> 全选当前页</label>
+                            <button class="btn ghost" type="button" id="yinuoppCopyCardsBtn">复制卡密</button>
+                            <button class="btn ghost" type="button" data-yinuopp-card-batch="enable">启用</button>
+                            <button class="btn ghost danger-soft" type="button" data-yinuopp-card-batch="disable">禁用卡密</button>
+                            <button class="btn ghost danger-soft" type="button" data-yinuopp-card-batch="delete">删除</button>
+                            <span id="yinuoppCardBatchMsg" class="muted">可多选后批量操作</span>
+                        </div>
+                        <div id="yinuoppCardList" class="card-list empty">正在加载卡密...</div>
+                        <div class="card-pager">
+                            <button class="btn ghost" type="button" id="yinuoppCardPrevPage">上一页</button>
+                            <span id="yinuoppCardPageInfo">1 / 1</span>
+                            <button class="btn ghost" type="button" id="yinuoppCardNextPage">下一页</button>
                         </div>
                     </section>
                 </div>

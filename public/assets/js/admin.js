@@ -170,7 +170,7 @@ if (updateBtn) {
 
 function fillSettingsForm(settings) {
     if (!settings) return;
-    [document.getElementById('settingsForm'), document.getElementById('haozhuSettingsForm'), document.getElementById('lubanSettingsForm')].forEach(function (form) {
+    [document.getElementById('settingsForm'), document.getElementById('haozhuSettingsForm'), document.getElementById('lubanSettingsForm'), document.getElementById('yinuoppSettingsForm')].forEach(function (form) {
         if (!form) return;
         Object.keys(settings).forEach(function (key) {
             if (!form.elements[key]) return;
@@ -204,6 +204,9 @@ var toggleHaozhuSettingsBtn = document.getElementById('toggleHaozhuSettingsBtn')
 var lubanSettingsForm = document.getElementById('lubanSettingsForm');
 var lubanSettingsMsg = document.getElementById('lubanSettingsMsg');
 var toggleLubanSettingsBtn = document.getElementById('toggleLubanSettingsBtn');
+var yinuoppSettingsForm = document.getElementById('yinuoppSettingsForm');
+var yinuoppSettingsMsg = document.getElementById('yinuoppSettingsMsg');
+var toggleYinuoppSettingsBtn = document.getElementById('toggleYinuoppSettingsBtn');
 
 if (toggleHaozhuSettingsBtn && haozhuSettingsForm) {
     toggleHaozhuSettingsBtn.addEventListener('click', function () {
@@ -216,6 +219,13 @@ if (toggleLubanSettingsBtn && lubanSettingsForm) {
     toggleLubanSettingsBtn.addEventListener('click', function () {
         var isHidden = lubanSettingsForm.classList.toggle('hidden');
         toggleLubanSettingsBtn.textContent = isHidden ? '配置' : '收起配置';
+    });
+}
+
+if (toggleYinuoppSettingsBtn && yinuoppSettingsForm) {
+    toggleYinuoppSettingsBtn.addEventListener('click', function () {
+        var isHidden = yinuoppSettingsForm.classList.toggle('hidden');
+        toggleYinuoppSettingsBtn.textContent = isHidden ? '配置' : '收起配置';
     });
 }
 
