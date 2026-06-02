@@ -365,11 +365,15 @@ $jmwebSettings = jmweb_read_settings();
                             <button class="btn primary full" type="submit">开始生成</button>
                             <div id="yinuoppCardCreateMsg" class="settings-msg">手机号池循环复用；当前已用 0 次，可用 0 个（可用=手机号总数）。</div>
                         </form>
-                        <div class="card-stats" id="yinuoppCardStats">
-                            <div><strong>0</strong><span>全部</span></div>
-                            <div><strong>0</strong><span>可用</span></div>
-                            <div><strong>0</strong><span>已用</span></div>
-                            <div><strong>0</strong><span>禁用</span></div>
+                        <div class="card-stats yinuopp-stats-grid" id="yinuoppCardStats">
+                            <div><strong>0</strong><span>手机号总数</span></div>
+                            <div><strong>0</strong><span>正常可用</span></div>
+                            <div><strong>0</strong><span>已用次数</span></div>
+                            <div><strong>0</strong><span>接码成功</span></div>
+                            <div><strong>0</strong><span>问题号</span></div>
+                            <div><strong>0</strong><span>禁用号</span></div>
+                            <div><strong>0</strong><span>可用卡密</span></div>
+                            <div><strong>0</strong><span>已用卡密</span></div>
                         </div>
                     </section>
                     <section class="settings-card card-list-panel yinuopp-mode-panel">
@@ -378,7 +382,7 @@ $jmwebSettings = jmweb_read_settings();
                                 <strong>一诺PP详情</strong>
                                 <span id="yinuoppModeSummary">请选择查看卡密详情或手机号详情</span>
                             </div>
-                            <div class="hero-actions">
+                            <div class="yinuopp-mode-switch">
                                 <button class="btn primary" type="button" data-yinuopp-mode="cards">卡密详情</button>
                                 <button class="btn ghost" type="button" data-yinuopp-mode="numbers">手机号详情</button>
                             </div>

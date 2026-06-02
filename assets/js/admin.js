@@ -506,7 +506,11 @@ function initCardBoard(config) {
             state.page = result.page || 1;
             state.pages = result.pages || 1;
             renderCards(result.cards || []);
-            renderStats(result.stats || {});
+            if (config.provider === 'yinuopp') {
+                yinuoppCardStatsData = result.stats || {};
+                renderYinuoppCombinedStats();
+            }
+            if (!config.skipStats) renderStats(result.stats || {});
             if (summary) summary.textContent = '一列显示 ' + (result.limit || state.limit) + ' 个，共 ' + (result.total || 0) + ' 个';
             if (pageInfo) pageInfo.textContent = state.page + ' / ' + state.pages;
         } catch (error) {
@@ -600,6 +604,33 @@ function initCardBoard(config) {
     return { loadCards: loadCards };
 }
 
+var yinuoppNumberStatsData = {};
+var yinuoppCardStatsData = {};
+
+function renderYinuoppCombinedStats() {
+    var stats = yinuoppNumberStatsData || {};
+    var cards = yinuoppCardStatsData || {};
+    var el = document.getElementById('yinuoppCardCreateMsg');
+    if (el) {
+        el.textContent = '手机号池循环复用；当前已用 ' + (stats.used || 0) + ' 次，可用 ' + (stats.total || 0) + ' 个（其中正常 ' + (stats.available || 0) + ' 个，问题 ' + (stats.bad || 0) + ' 个）。';
+    }
+    var statBox = document.getElementById('yinuoppCardStats');
+    if (!statBox) return;
+    var items = [
+        [stats.total || 0, '手机号总数'],
+        [stats.available || 0, '正常可用'],
+        [stats.used || 0, '分配次数'],
+        [stats.success || 0, '接码成功'],
+        [stats.bad || 0, '问题号'],
+        [stats.disabled || 0, '禁用号'],
+        [cards.available || 0, '可用卡密'],
+        [cards.used || 0, '已用卡密'],
+    ];
+    statBox.innerHTML = items.map(function (item) {
+        return '<div><strong>' + item[0] + '</strong><span>' + item[1] + '</span></div>';
+    }).join('');
+}
+
 function initYinuoppModeSwitcher() {
     var cardsPanel = document.getElementById('yinuoppCardsPanel');
     var numbersPanel = document.getElementById('yinuoppNumbersPanel');
@@ -640,16 +671,8 @@ function initYinuoppNumberBoard() {
         return Array.prototype.slice.call(document.querySelectorAll('.yinuopp-number-check:checked')).map(function (item) { return item.value; });
     }
     function renderStats(stats) {
-        var el = document.getElementById('yinuoppCardCreateMsg');
-        if (!el || !stats) return;
-        el.textContent = '手机号池循环复用；当前已用 ' + (stats.used || 0) + ' 次，可用 ' + (stats.total || 0) + ' 个（其中正常 ' + (stats.available || 0) + ' 个，问题 ' + (stats.bad || 0) + ' 个）。';
-        var statBox = document.getElementById('yinuoppCardStats');
-        if (statBox) {
-            statBox.innerHTML = '<div><strong>' + (stats.total || 0) + '</strong><span>手机号总数</span></div>' +
-                '<div><strong>' + (stats.available || 0) + '</strong><span>正常可用</span></div>' +
-                '<div><strong>' + (stats.used || 0) + '</strong><span>已用次数</span></div>' +
-                '<div><strong>' + (stats.bad || 0) + '</strong><span>问题号</span></div>';
-        }
+        yinuoppNumberStatsData = stats || {};
+        renderYinuoppCombinedStats();
     }
     function renderNumbers(numbers) {
         var list = document.getElementById('yinuoppNumberList');
@@ -971,6 +994,7 @@ var yinuoppNumberBoard = initYinuoppNumberBoard();
 
 var yinuoppCardBoard = initCardBoard({
     provider: 'yinuopp',
+    skipStats: true,
     cacheKey: 'jmweb_card_filters_yinuopp',
     statusName: 'yinuopp_card_status',
     checkClass: 'yinuopp-card-check',

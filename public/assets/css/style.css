@@ -184,10 +184,16 @@ code { padding: 3px 7px; border-radius: 8px; background: #eef2ff; color: #4338ca
 .cards-workspace { display: grid; grid-template-columns: minmax(280px, 360px) 1fr; gap: 18px; align-items: start; }
 .card-create-form { display: grid; gap: 16px; }
 .card-stats { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; margin-top: 18px; }
+.yinuopp-stats-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 .card-stats div { padding: 14px; border-radius: 18px; background: #f8fafc; border: 1px solid #eef2ff; }
 .card-stats strong { display: block; font-size: 1.35rem; letter-spacing: -.04em; }
 .card-stats span { color: var(--muted); font-weight: 800; }
 .card-list-panel { min-width: 0; grid-column: 2; grid-row: 1 / span 2; }
+.yinuopp-mode-panel { grid-column: 2; grid-row: 1; }
+#yinuoppCardsPanel, #yinuoppNumbersPanel { grid-column: 2; grid-row: 2; }
+.yinuopp-mode-panel .card-list-toolbar { display: grid; justify-content: stretch; align-items: start; gap: 14px; }
+.yinuopp-mode-switch { display: flex; gap: 12px; flex-wrap: wrap; margin-top: 4px; }
+.yinuopp-mode-switch .btn { min-width: 140px; padding-inline: 26px; }
 .provider-config-panel, .create-code-panel { grid-column: 1; }
 .provider-settings-form { display: grid; gap: 16px; }
 .provider-tabs { display: flex; gap: 10px; flex-wrap: wrap; }
