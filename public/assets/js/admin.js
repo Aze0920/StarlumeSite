@@ -322,6 +322,39 @@ if (lubanSettingsForm) {
     });
 }
 
+function setYinuoppSettingsMessage(message, type) {
+    if (!yinuoppSettingsMsg) return;
+    yinuoppSettingsMsg.textContent = message;
+    yinuoppSettingsMsg.className = 'settings-msg' + (type ? ' ' + type : '');
+}
+
+if (yinuoppSettingsForm) {
+    yinuoppSettingsForm.addEventListener('submit', async function (event) {
+        event.preventDefault();
+        var submitButton = yinuoppSettingsForm.querySelector('button[type="submit"]');
+        if (submitButton) {
+            submitButton.disabled = true;
+            submitButton.textContent = '保存中...';
+        }
+        setYinuoppSettingsMessage('正在保存一诺PP库存...');
+        var formData = new FormData(yinuoppSettingsForm);
+        var payload = {};
+        formData.forEach(function (value, key) { payload[key] = value; });
+        try {
+            var result = await postAdmin('save_settings', payload);
+            setYinuoppSettingsMessage(result.ok ? '一诺PP库存已保存。' : (result.message || '保存失败'), result.ok ? 'success' : 'error');
+            if (result.ok && result.settings) fillSettingsForm(result.settings);
+        } catch (error) {
+            setYinuoppSettingsMessage('保存失败：' + error.message, 'error');
+        } finally {
+            if (submitButton) {
+                submitButton.disabled = false;
+                submitButton.textContent = '保存一诺PP库存';
+            }
+        }
+    });
+}
+
 if (resetSettingsBtn) {
     resetSettingsBtn.addEventListener('click', async function () {
         resetSettingsBtn.disabled = true;
@@ -783,6 +816,28 @@ var lubanCardBoard = initCardBoard({
     },
 });
 
+var yinuoppCardBoard = initCardBoard({
+    provider: 'yinuopp',
+    cacheKey: 'jmweb_card_filters_yinuopp',
+    statusName: 'yinuopp_card_status',
+    checkClass: 'yinuopp-card-check',
+    batchAttr: 'data-yinuopp-card-batch',
+    ids: {
+        list: 'yinuoppCardList',
+        stats: 'yinuoppCardStats',
+        limitSelect: 'yinuoppCardLimitSelect',
+        keyword: 'yinuoppCardKeyword',
+        summary: 'yinuoppCardListSummary',
+        pageInfo: 'yinuoppCardPageInfo',
+        selectAll: 'yinuoppCardSelectAll',
+        batchMsg: 'yinuoppCardBatchMsg',
+        refreshBtn: 'yinuoppCardRefreshBtn',
+        prevPage: 'yinuoppCardPrevPage',
+        nextPage: 'yinuoppCardNextPage',
+        copyBtn: 'yinuoppCopyCardsBtn',
+    },
+});
+
 var cardCreateForm = document.getElementById('cardCreateForm');
 if (cardCreateForm) {
     cardCreateForm.addEventListener('submit', async function (event) {
@@ -846,6 +901,39 @@ if (lubanCardCreateForm) {
             var result = await postAdmin('create_luban_cards', { count: count, project_id: projectId });
             setCardMessage(msg, result.message || '制作完成', result.ok ? 'success' : 'error');
             handleCardCreateSuccess(result, lubanCardBoard, { prefix: 'LB', projectId: projectId });
+        } catch (error) {
+            setCardMessage(msg, '制作失败：' + error.message, 'error');
+        } finally {
+            if (button) {
+                button.disabled = false;
+                button.textContent = '开始生成';
+            }
+        }
+    });
+}
+
+var yinuoppCardCreateForm = document.getElementById('yinuoppCardCreateForm');
+if (yinuoppCardCreateForm) {
+    yinuoppCardCreateForm.addEventListener('submit', async function (event) {
+        event.preventDefault();
+        var msg = document.getElementById('yinuoppCardCreateMsg');
+        var button = yinuoppCardCreateForm.querySelector('button[type="submit"]');
+        var data = new FormData(yinuoppCardCreateForm);
+        var count = parseInt(data.get('count'), 10) || 0;
+        if (count < 1 || count > 10000) {
+            setCardMessage(msg, '制作数量必须在 1 - 10000 之间。', 'error');
+            return;
+        }
+        if (button) {
+            button.disabled = true;
+            button.textContent = '制作中...';
+        }
+        setCardMessage(msg, '正在生成一诺PP兑换码，请稍等...');
+        try {
+            var result = await postAdmin('create_yinuopp_cards', { count: count });
+            setCardMessage(msg, result.message || '制作完成', result.ok ? 'success' : 'error');
+            if (result.ok && result.settings) fillSettingsForm(result.settings);
+            handleCardCreateSuccess(result, yinuoppCardBoard, { prefix: 'YN', projectId: 'PP' });
         } catch (error) {
             setCardMessage(msg, '制作失败：' + error.message, 'error');
         } finally {

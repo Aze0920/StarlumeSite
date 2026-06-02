@@ -101,7 +101,7 @@ function jmweb_clean_settings($input)
     $settings['exchange_expire_minutes'] = isset($input['exchange_expire_minutes']) ? (int) $input['exchange_expire_minutes'] : (isset($current['exchange_expire_minutes']) ? (int) $current['exchange_expire_minutes'] : (int) $defaults['exchange_expire_minutes']);
     $settings['cancel_wait_minutes'] = isset($input['cancel_wait_minutes']) ? (int) $input['cancel_wait_minutes'] : (isset($current['cancel_wait_minutes']) ? (int) $current['cancel_wait_minutes'] : (int) $defaults['cancel_wait_minutes']);
     $settings['active_sms_provider'] = isset($input['active_sms_provider']) ? trim((string) $input['active_sms_provider']) : (isset($current['active_sms_provider']) ? (string) $current['active_sms_provider'] : $defaults['active_sms_provider']);
-    if (!in_array($settings['active_sms_provider'], array('haozhu', 'luban'), true)) {
+    if (!in_array($settings['active_sms_provider'], array('haozhu', 'luban', 'yinuopp'), true)) {
         $settings['active_sms_provider'] = 'haozhu';
     }
     $settings['haozhu_api_hosts'] = isset($input['haozhu_api_hosts']) ? jmweb_clean_multiline_hosts($input['haozhu_api_hosts']) : (isset($current['haozhu_api_hosts']) ? (string) $current['haozhu_api_hosts'] : $defaults['haozhu_api_hosts']);
