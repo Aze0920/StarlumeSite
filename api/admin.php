@@ -749,7 +749,7 @@ try {
             $pdo = jmweb_ensure_yinuopp_numbers_table();
             $number = jmweb_yinuopp_pick_number($pdo);
             if (!$number) {
-                jmweb_api_json(array('ok' => false, 'message' => '一诺PP当前没有可用手机号，请先在手机号详情中启用或导入库存。'));
+                jmweb_api_json(array('ok' => false, 'message' => '当前没有可用手机号，请联系管理员。'));
             }
             $phoneCountry = !empty($number['phone_country']) ? $number['phone_country'] : jmweb_detect_phone_country_code($number['phone']);
             $update = $pdo->prepare('UPDATE jm_cards SET phone = ?, phone_country = ?, provider_host = ?, provider_token = ?, expires_at = ?, sms_code = ?, sms_text = ?, updated_at = ? WHERE id = ? AND status = ?');
@@ -759,19 +759,19 @@ try {
             $card['provider_host'] = 'yinuopp';
             $card['provider_token'] = $number['sms_api'];
             $card['expires_at'] = 0;
-            jmweb_api_json(array('ok' => true, 'message' => '一诺PP已按负载均衡分配手机号，正在等待 6 位验证码。', 'activation' => jmweb_public_activation_payload($card, '等待验证码', '', '')));
+            jmweb_api_json(array('ok' => true, 'message' => '已获取手机号，正在等待 6 位验证码。', 'activation' => jmweb_public_activation_payload($card, '等待验证码', '', '')));
         }
         if ($provider === 'luban') {
             $key = jmweb_luban_apikey($settings);
             if (empty($key['ok'])) {
-                jmweb_api_json(array('ok' => false, 'message' => $key['message']));
+                jmweb_api_json(array('ok' => false, 'message' => '当前没有可用手机号，请联系管理员。'));
             }
             list($url, $raw, $json) = jmweb_luban_json_request('getNumber', array(
                 'apikey' => $key['apikey'],
                 'service_id' => $card['project_id'],
             ));
             if (!isset($json['code']) || (string) $json['code'] !== '0' || empty($json['number']) || empty($json['request_id'])) {
-                jmweb_api_json(array('ok' => false, 'message' => '鲁班获取手机号失败：' . (isset($json['msg']) ? $json['msg'] : ($raw ? $raw : '接口无响应'))));
+                jmweb_api_json(array('ok' => false, 'message' => '当前没有可用手机号，请联系管理员。'));
             }
             $expiresAt = $now + 240;
             jmweb_write_update_log('Luban getNumber raw: ' . $raw);
@@ -791,11 +791,11 @@ try {
             $card['provider_host'] = 'lubansms.com';
             $card['provider_token'] = '';
             $card['expires_at'] = $expiresAt;
-            jmweb_api_json(array('ok' => true, 'message' => '鲁班已获取手机号，请在 240 秒内等待验证码。', 'activation' => jmweb_public_activation_payload($card, '等待验证码', '', '')));
+            jmweb_api_json(array('ok' => true, 'message' => '已获取手机号，请在 240 秒内等待验证码。', 'activation' => jmweb_public_activation_payload($card, '等待验证码', '', '')));
         }
         $login = jmweb_haozhu_login($settings);
         if (empty($login['ok'])) {
-            jmweb_api_json(array('ok' => false, 'message' => $login['message']));
+            jmweb_api_json(array('ok' => false, 'message' => '当前没有可用手机号，请联系管理员。'));
         }
         list($url, $raw, $json) = jmweb_haozhu_json_request($login['host'], array(
             'api' => 'getPhone',
@@ -803,7 +803,7 @@ try {
             'sid' => $card['project_id'],
         ));
         if (!isset($json['code']) || (string) $json['code'] !== '0' || empty($json['phone'])) {
-            jmweb_api_json(array('ok' => false, 'message' => '获取手机号失败：' . (isset($json['msg']) ? $json['msg'] : ($raw ? $raw : '接口无响应'))));
+            jmweb_api_json(array('ok' => false, 'message' => '当前没有可用手机号，请联系管理员。'));
         }
         $expiresAt = $now + 240;
         jmweb_write_update_log('Haozhu getPhone raw: ' . $raw);
@@ -844,7 +844,7 @@ try {
         if ($provider === 'yinuopp') {
             $apiUrl = !empty($card['provider_token']) ? $card['provider_token'] : '';
             if ($apiUrl === '') {
-                jmweb_api_json(array('ok' => false, 'message' => '一诺PP接码 API 为空。'));
+                jmweb_api_json(array('ok' => false, 'message' => '当前没有可用手机号，请联系管理员。'));
             }
             $sms = jmweb_yinuopp_get_sms($apiUrl);
             if (!empty($sms['ok'])) {
@@ -865,7 +865,7 @@ try {
         if ($provider === 'luban') {
             $key = jmweb_luban_apikey($settings);
             if (empty($key['ok'])) {
-                jmweb_api_json(array('ok' => false, 'message' => $key['message']));
+                jmweb_api_json(array('ok' => false, 'message' => '当前没有可用手机号，请联系管理员。'));
             }
             $requestId = !empty($card['provider_sid']) ? $card['provider_sid'] : $card['provider_uid'];
             $sms = jmweb_luban_get_sms($key['apikey'], $requestId);
@@ -884,7 +884,7 @@ try {
         }
         $login = jmweb_haozhu_login($settings);
         if (empty($login['ok'])) {
-            jmweb_api_json(array('ok' => false, 'message' => $login['message']));
+            jmweb_api_json(array('ok' => false, 'message' => '当前没有可用手机号，请联系管理员。'));
         }
         $host = !empty($card['provider_host']) ? $card['provider_host'] : $login['host'];
         $token = !empty($card['provider_token']) ? $card['provider_token'] : $login['token'];
@@ -931,7 +931,7 @@ try {
             jmweb_yinuopp_mark_number_bad($pdo, isset($card['phone']) ? $card['phone'] : '', isset($card['provider_token']) ? $card['provider_token'] : '');
             $update = $pdo->prepare('UPDATE jm_cards SET phone = ?, phone_country = ?, provider_host = ?, provider_token = ?, expires_at = 0, updated_at = ? WHERE id = ? AND status = ?');
             $update->execute(array('', '', '', '', $now, $card['id'], 'available'));
-            jmweb_api_json(array('ok' => true, 'message' => '已记录该一诺PP手机号为问题号，重新兑换会自动分配下一个可用号码。'));
+            jmweb_api_json(array('ok' => true, 'message' => '已取消当前号码，可以重新兑换更换手机号。'));
         }
         if ($provider === 'luban') {
             $settings = jmweb_read_settings();

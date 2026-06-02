@@ -1,8 +1,8 @@
 {
-  "version": "1.0.56",
+  "version": "1.0.58",
   "name": "豪猪接码",
   "repo": "https://github.com/Aze0920/StarlumeSite",
   "branch": "main",
   "release_date": "2026-06-03",
-  "description": "修复一诺PP右侧详情区域布局空白，将模式选择和详情列表放入独立纵向容器紧密排列。"
+  "description": "统一所有前台接码取号失败提示，不暴露具体供应商、接口或后台配置细节。"
 }
