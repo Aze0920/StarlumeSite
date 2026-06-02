@@ -1,8 +1,8 @@
 {
-  "version": "1.0.51",
+  "version": "1.0.52",
   "name": "豪猪接码",
   "repo": "https://github.com/Aze0920/StarlumeSite",
   "branch": "main",
-  "release_date": "2026-05-30",
-  "description": "修复豪猪 11 位中国手机号被误识别为美国 +1 的问题，正确展示 +86 并复制完整本地号码。"
+  "release_date": "2026-06-03",
+  "description": "新增一诺PP手动库存分支，支持按区号手机号和接码 API 生成独立兑换码并自动获取验证码。"
 }
