@@ -189,8 +189,10 @@ code { padding: 3px 7px; border-radius: 8px; background: #eef2ff; color: #4338ca
 .card-stats strong { display: block; font-size: 1.35rem; letter-spacing: -.04em; }
 .card-stats span { color: var(--muted); font-weight: 800; }
 .card-list-panel { min-width: 0; grid-column: 2; grid-row: 1 / span 2; }
-.yinuopp-mode-panel { grid-column: 2; grid-row: 1; }
-#yinuoppCardsPanel, #yinuoppNumbersPanel { grid-column: 2; grid-row: 2; }
+.yinuopp-detail-stack { grid-column: 2; display: grid; gap: 18px; align-self: start; }
+.yinuopp-detail-stack .card-list-panel { grid-column: auto; grid-row: auto; }
+.yinuopp-mode-panel { grid-column: auto; grid-row: auto; }
+#yinuoppCardsPanel, #yinuoppNumbersPanel { grid-column: auto; grid-row: auto; }
 .yinuopp-mode-panel .card-list-toolbar { display: grid; justify-content: stretch; align-items: start; gap: 14px; }
 .yinuopp-mode-switch { display: flex; gap: 12px; flex-wrap: wrap; margin-top: 4px; }
 .yinuopp-mode-switch .btn { min-width: 140px; padding-inline: 26px; }

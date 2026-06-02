@@ -376,6 +376,7 @@ $jmwebSettings = jmweb_read_settings();
                             <div><strong>0</strong><span>已用卡密</span></div>
                         </div>
                     </section>
+                    <div class="yinuopp-detail-stack">
                     <section class="settings-card card-list-panel yinuopp-mode-panel">
                         <div class="card-list-toolbar">
                             <div>
@@ -467,6 +468,7 @@ $jmwebSettings = jmweb_read_settings();
                             <button class="btn ghost" type="button" id="yinuoppNumberNextPage">下一页</button>
                         </div>
                     </section>
+                    </div>
                 </div>
             </section>
 

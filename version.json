@@ -1,8 +1,8 @@
 {
-  "version": "1.0.55",
+  "version": "1.0.56",
   "name": "豪猪接码",
   "repo": "https://github.com/Aze0920/StarlumeSite",
   "branch": "main",
   "release_date": "2026-06-03",
-  "description": "修复一诺PP详情模式切换按钮布局，扩展手机号池统计为8个卡片并避免卡密列表刷新覆盖统计。"
+  "description": "修复一诺PP右侧详情区域布局空白，将模式选择和详情列表放入独立纵向容器紧密排列。"
 }
