@@ -1,8 +1,8 @@
 {
-  "version": "1.0.52",
+  "version": "1.0.53",
   "name": "豪猪接码",
   "repo": "https://github.com/Aze0920/StarlumeSite",
   "branch": "main",
   "release_date": "2026-06-03",
-  "description": "新增一诺PP手动库存分支，支持按区号手机号和接码 API 生成独立兑换码并自动获取验证码。"
+  "description": "优化一诺PP为可循环复用手机号池，支持负载均衡分配、问题号记录、接码次数统计、手机号详情管理和6位验证码校验。"
 }

@@ -126,10 +126,19 @@
             if (countdownTimer) clearInterval(countdownTimer);
             countdownTimer = null;
         } else {
-            if (activationTimeLabel) activationTimeLabel.textContent = '到期时间';
-            if (activationExpiry) activationExpiry.textContent = data.expires_at ? formatTimeBySeconds(data.expires_at) : '-';
+            if (data.expires_at) {
+                if (activationTimeLabel) activationTimeLabel.textContent = '到期时间';
+                if (activationExpiry) activationExpiry.textContent = formatTimeBySeconds(data.expires_at);
+                startCountdown(data.expires_at);
+            } else {
+                if (activationTimeLabel) activationTimeLabel.textContent = '到期时间';
+                if (activationExpiry) activationExpiry.textContent = '-';
+                if (cancelActivation) cancelActivation.disabled = false;
+                if (cancelCountdown) cancelCountdown.textContent = '无固定到期时间，可随时更换号码';
+                if (countdownTimer) clearInterval(countdownTimer);
+                countdownTimer = null;
+            }
             if (cancelActivation) cancelActivation.textContent = '取消激活';
-            startCountdown(data.expires_at || 0);
         }
         if (copyPhoneButton) copyPhoneButton.disabled = !copyPhone;
     }

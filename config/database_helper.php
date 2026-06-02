@@ -108,6 +108,56 @@ function jmweb_ensure_cards_table()
     return $pdo;
 }
 
+function jmweb_ensure_yinuopp_numbers_table()
+{
+    $pdo = jmweb_ensure_cards_table();
+    $pdo->exec("CREATE TABLE IF NOT EXISTS `jm_yinuopp_numbers` (
+        `id` int unsigned NOT NULL AUTO_INCREMENT,
+        `phone` varchar(32) NOT NULL,
+        `phone_country` varchar(8) NOT NULL DEFAULT '',
+        `sms_api` varchar(1000) NOT NULL DEFAULT '',
+        `status` varchar(20) NOT NULL DEFAULT 'available',
+        `use_count` int unsigned NOT NULL DEFAULT 0,
+        `success_count` int unsigned NOT NULL DEFAULT 0,
+        `bad_count` int unsigned NOT NULL DEFAULT 0,
+        `last_used_at` int unsigned NOT NULL DEFAULT 0,
+        `last_success_at` int unsigned NOT NULL DEFAULT 0,
+        `last_bad_at` int unsigned NOT NULL DEFAULT 0,
+        `created_at` int unsigned NOT NULL DEFAULT 0,
+        `updated_at` int unsigned NOT NULL DEFAULT 0,
+        PRIMARY KEY (`id`),
+        UNIQUE KEY `idx_phone` (`phone`),
+        KEY `idx_status` (`status`),
+        KEY `idx_balance` (`status`, `use_count`, `last_used_at`)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+    $columns = array(
+        'phone_country' => "ALTER TABLE `jm_yinuopp_numbers` ADD COLUMN `phone_country` varchar(8) NOT NULL DEFAULT '' AFTER `phone`",
+        'sms_api' => "ALTER TABLE `jm_yinuopp_numbers` ADD COLUMN `sms_api` varchar(1000) NOT NULL DEFAULT '' AFTER `phone_country`",
+        'status' => "ALTER TABLE `jm_yinuopp_numbers` ADD COLUMN `status` varchar(20) NOT NULL DEFAULT 'available' AFTER `sms_api`",
+        'use_count' => "ALTER TABLE `jm_yinuopp_numbers` ADD COLUMN `use_count` int unsigned NOT NULL DEFAULT 0 AFTER `status`",
+        'success_count' => "ALTER TABLE `jm_yinuopp_numbers` ADD COLUMN `success_count` int unsigned NOT NULL DEFAULT 0 AFTER `use_count`",
+        'bad_count' => "ALTER TABLE `jm_yinuopp_numbers` ADD COLUMN `bad_count` int unsigned NOT NULL DEFAULT 0 AFTER `success_count`",
+        'last_used_at' => "ALTER TABLE `jm_yinuopp_numbers` ADD COLUMN `last_used_at` int unsigned NOT NULL DEFAULT 0 AFTER `bad_count`",
+        'last_success_at' => "ALTER TABLE `jm_yinuopp_numbers` ADD COLUMN `last_success_at` int unsigned NOT NULL DEFAULT 0 AFTER `last_used_at`",
+        'last_bad_at' => "ALTER TABLE `jm_yinuopp_numbers` ADD COLUMN `last_bad_at` int unsigned NOT NULL DEFAULT 0 AFTER `last_success_at`",
+    );
+    foreach ($columns as $column => $sql) {
+        if (!jmweb_table_has_column($pdo, 'jm_yinuopp_numbers', $column)) {
+            $pdo->exec($sql);
+        }
+    }
+    try {
+        $pdo->exec('ALTER TABLE `jm_yinuopp_numbers` MODIFY COLUMN `sms_api` varchar(1000) NOT NULL DEFAULT \'\'');
+    } catch (Exception $e) {}
+    return $pdo;
+}
+
+function jmweb_yinuopp_number_status_label($status)
+{
+    if ($status === 'bad') return '问题';
+    if ($status === 'disabled') return '禁用';
+    return '可用';
+}
 function jmweb_card_status_label($status)
 {
     if ($status === 'used') {

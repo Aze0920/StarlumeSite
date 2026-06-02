@@ -491,7 +491,7 @@ try {
         if (is_array($json)) {
             $fields = array('code', 'sms_code', 'yzm', 'otp', 'verify_code', 'verification_code');
             foreach ($fields as $field) {
-                if (isset($json[$field]) && preg_match('/\d{4,8}/', (string) $json[$field], $match)) {
+                if (isset($json[$field]) && preg_match('/(?<!\d)\d{6}(?!\d)/', (string) $json[$field], $match)) {
                     return array('ok' => true, 'code' => $match[0], 'sms' => is_string($json[$field]) ? (string) $json[$field] : $text, 'message' => '成功', 'raw' => $text);
                 }
             }
@@ -499,17 +499,94 @@ try {
             foreach ($smsFields as $field) {
                 if (isset($json[$field])) {
                     $value = is_string($json[$field]) ? (string) $json[$field] : json_encode($json[$field], JSON_UNESCAPED_UNICODE);
-                    if (preg_match('/\d{4,8}/', $value, $match)) {
+                    if (preg_match('/(?<!\d)\d{6}(?!\d)/', $value, $match)) {
                         return array('ok' => true, 'code' => $match[0], 'sms' => $value, 'message' => '成功', 'raw' => $text);
                     }
                 }
             }
-            return array('ok' => false, 'code' => '', 'sms' => '', 'message' => isset($json['msg']) ? (string) $json['msg'] : '暂未收到验证码', 'raw' => $text);
+            return array('ok' => false, 'code' => '', 'sms' => '', 'message' => isset($json['msg']) ? (string) $json['msg'] : '暂未收到 6 位验证码', 'raw' => $text);
         }
-        if (preg_match('/\d{4,8}/', $text, $match)) {
+        if (preg_match('/(?<!\d)\d{6}(?!\d)/', $text, $match)) {
             return array('ok' => true, 'code' => $match[0], 'sms' => $text, 'message' => '成功', 'raw' => $text);
         }
-        return array('ok' => false, 'code' => '', 'sms' => '', 'message' => $text !== '' ? $text : '暂未收到验证码', 'raw' => $text);
+        return array('ok' => false, 'code' => '', 'sms' => '', 'message' => $text !== '' ? $text : '暂未收到 6 位验证码', 'raw' => $text);
+    }
+
+    function jmweb_yinuopp_inventory_stats($pdo = null)
+    {
+        $pdo = $pdo ?: jmweb_ensure_yinuopp_numbers_table();
+        $stats = array('total' => 0, 'available' => 0, 'bad' => 0, 'disabled' => 0, 'used' => 0, 'success' => 0);
+        $stmt = $pdo->query('SELECT status, COUNT(*) AS total, COALESCE(SUM(use_count), 0) AS uses, COALESCE(SUM(success_count), 0) AS successes FROM jm_yinuopp_numbers GROUP BY status');
+        foreach ($stmt->fetchAll() as $row) {
+            $status = isset($row['status']) ? $row['status'] : '';
+            $total = (int) $row['total'];
+            $stats['total'] += $total;
+            $stats['used'] += (int) $row['uses'];
+            $stats['success'] += (int) $row['successes'];
+            if (isset($stats[$status])) {
+                $stats[$status] = $total;
+            }
+        }
+        return $stats;
+    }
+
+    function jmweb_yinuopp_import_inventory($inventory)
+    {
+        $pdo = jmweb_ensure_yinuopp_numbers_table();
+        $items = jmweb_yinuopp_inventory_items($inventory);
+        $now = time();
+        $insert = $pdo->prepare('INSERT INTO jm_yinuopp_numbers (phone, phone_country, sms_api, status, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?) ON DUPLICATE KEY UPDATE phone_country = VALUES(phone_country), sms_api = VALUES(sms_api), status = IF(status = \'disabled\', status, \'available\'), updated_at = VALUES(updated_at)');
+        $imported = 0;
+        foreach ($items as $item) {
+            $insert->execute(array($item['phone'], $item['country'], $item['api'], 'available', $now, $now));
+            $imported++;
+        }
+        return array('imported' => $imported, 'stats' => jmweb_yinuopp_inventory_stats($pdo));
+    }
+
+    function jmweb_yinuopp_pick_number($pdo)
+    {
+        $stmt = $pdo->query("SELECT * FROM jm_yinuopp_numbers WHERE status = 'available' ORDER BY use_count ASC, last_used_at ASC, id ASC LIMIT 1");
+        $number = $stmt->fetch();
+        if (!$number) {
+            return null;
+        }
+        $now = time();
+        $update = $pdo->prepare('UPDATE jm_yinuopp_numbers SET use_count = use_count + 1, last_used_at = ?, updated_at = ? WHERE id = ? AND status = ?');
+        $update->execute(array($now, $now, $number['id'], 'available'));
+        $number['use_count'] = (int) $number['use_count'] + 1;
+        $number['last_used_at'] = $now;
+        return $number;
+    }
+
+    function jmweb_yinuopp_mark_number_bad($pdo, $phone, $api)
+    {
+        $phone = preg_replace('/[^\d+]/', '', (string) $phone);
+        $api = trim((string) $api);
+        if ($phone === '' && $api === '') {
+            return;
+        }
+        $now = time();
+        $where = $phone !== '' ? 'phone = ?' : 'sms_api = ?';
+        $value = $phone !== '' ? $phone : $api;
+        $stmt = $pdo->prepare("UPDATE jm_yinuopp_numbers SET status = 'bad', bad_count = bad_count + 1, last_bad_at = ?, updated_at = ? WHERE {$where} AND status <> 'disabled'");
+        $stmt->execute(array($now, $now, $value));
+    }
+
+    function jmweb_yinuopp_number_rows($rows)
+    {
+        $result = array();
+        foreach ($rows as $row) {
+            $row['status_label'] = jmweb_yinuopp_number_status_label(isset($row['status']) ? $row['status'] : 'available');
+            $row['last_used_at_text'] = !empty($row['last_used_at']) ? date('Y-m-d H:i', (int) $row['last_used_at']) : '-';
+            $row['last_success_at_text'] = !empty($row['last_success_at']) ? date('Y-m-d H:i', (int) $row['last_success_at']) : '-';
+            $row['last_bad_at_text'] = !empty($row['last_bad_at']) ? date('Y-m-d H:i', (int) $row['last_bad_at']) : '-';
+            $row['created_at_text'] = !empty($row['created_at']) ? date('Y-m-d H:i', (int) $row['created_at']) : '-';
+            $parts = jmweb_phone_public_parts(isset($row['phone']) ? $row['phone'] : '', isset($row['phone_country']) ? $row['phone_country'] : '');
+            $row['phone_display'] = $parts['phone_display'];
+            $result[] = $row;
+        }
+        return $result;
     }
 
     function jmweb_card_provider($card)
@@ -602,7 +679,8 @@ try {
     {
         $now = time();
         $receivedAt = !empty($card['used_at']) ? (int) $card['used_at'] : 0;
-        $expireAt = !empty($card['expires_at']) ? (int) $card['expires_at'] : ($now + 240);
+        $provider = jmweb_card_provider($card);
+        $expireAt = !empty($card['expires_at']) ? (int) $card['expires_at'] : ($provider === 'yinuopp' ? 0 : ($now + 240));
         $phoneParts = jmweb_phone_public_parts(isset($card['phone']) ? $card['phone'] : '', isset($card['phone_country']) ? $card['phone_country'] : '');
         return array(
             'card_id' => (int) $card['id'],
@@ -660,23 +738,28 @@ try {
             jmweb_api_json(array('ok' => false, 'message' => '兑换码已禁用。'));
         }
         $now = time();
-        if (!empty($card['phone']) && !empty($card['expires_at']) && (int) $card['expires_at'] > $now) {
+        $currentProvider = jmweb_card_provider($card);
+        if (!empty($card['phone']) && ($currentProvider === 'yinuopp' || (!empty($card['expires_at']) && (int) $card['expires_at'] > $now))) {
             jmweb_api_json(array('ok' => true, 'message' => '手机号已获取，正在等待验证码。', 'activation' => jmweb_public_activation_payload($card, '等待验证码', '', '')));
         }
 
         $settings = jmweb_read_settings();
-        $provider = jmweb_card_provider($card);
+        $provider = $currentProvider;
         if ($provider === 'yinuopp') {
-            if (empty($card['phone']) || empty($card['provider_token'])) {
-                jmweb_api_json(array('ok' => false, 'message' => '一诺PP库存卡未绑定号码或接码 API，请重新生成卡密。'));
+            $pdo = jmweb_ensure_yinuopp_numbers_table();
+            $number = jmweb_yinuopp_pick_number($pdo);
+            if (!$number) {
+                jmweb_api_json(array('ok' => false, 'message' => '一诺PP当前没有可用手机号，请先在手机号详情中启用或导入库存。'));
             }
-            $expiresAt = $now + 240;
-            $phoneCountry = !empty($card['phone_country']) ? $card['phone_country'] : jmweb_detect_phone_country_code($card['phone']);
-            $update = $pdo->prepare('UPDATE jm_cards SET phone_country = ?, expires_at = ?, updated_at = ? WHERE id = ? AND status = ?');
-            $update->execute(array($phoneCountry, $expiresAt, $now, $card['id'], 'available'));
+            $phoneCountry = !empty($number['phone_country']) ? $number['phone_country'] : jmweb_detect_phone_country_code($number['phone']);
+            $update = $pdo->prepare('UPDATE jm_cards SET phone = ?, phone_country = ?, provider_host = ?, provider_token = ?, expires_at = ?, sms_code = ?, sms_text = ?, updated_at = ? WHERE id = ? AND status = ?');
+            $update->execute(array($number['phone'], $phoneCountry, 'yinuopp', $number['sms_api'], 0, '', '', $now, $card['id'], 'available'));
+            $card['phone'] = $number['phone'];
             $card['phone_country'] = $phoneCountry;
-            $card['expires_at'] = $expiresAt;
-            jmweb_api_json(array('ok' => true, 'message' => '一诺PP已分配手机号，请在 240 秒内等待验证码。', 'activation' => jmweb_public_activation_payload($card, '等待验证码', '', '')));
+            $card['provider_host'] = 'yinuopp';
+            $card['provider_token'] = $number['sms_api'];
+            $card['expires_at'] = 0;
+            jmweb_api_json(array('ok' => true, 'message' => '一诺PP已按负载均衡分配手机号，正在等待 6 位验证码。', 'activation' => jmweb_public_activation_payload($card, '等待验证码', '', '')));
         }
         if ($provider === 'luban') {
             $key = jmweb_luban_apikey($settings);
@@ -753,11 +836,11 @@ try {
         if ($card['status'] === 'used') {
             jmweb_api_json(array('ok' => true, 'received' => true, 'message' => '已接到验证码，以下为本次接码数据。', 'activation' => jmweb_public_activation_payload($card, '已激活', isset($card['sms_code']) ? $card['sms_code'] : '', isset($card['sms_text']) ? $card['sms_text'] : '')));
         }
-        if ((int) $card['expires_at'] <= time()) {
+        $provider = jmweb_card_provider($card);
+        if ($provider !== 'yinuopp' && (int) $card['expires_at'] <= time()) {
             jmweb_api_json(array('ok' => false, 'expired' => true, 'message' => '240 秒已到，可以更换号码。', 'activation' => jmweb_public_activation_payload($card, '已超时', '', '')));
         }
         $settings = jmweb_read_settings();
-        $provider = jmweb_card_provider($card);
         if ($provider === 'yinuopp') {
             $apiUrl = !empty($card['provider_token']) ? $card['provider_token'] : '';
             if ($apiUrl === '') {
@@ -768,6 +851,8 @@ try {
                 $now = time();
                 $update = $pdo->prepare('UPDATE jm_cards SET status = ?, sms_code = ?, sms_text = ?, used_at = ?, updated_at = ? WHERE id = ? AND status = ?');
                 $update->execute(array('used', $sms['code'], $sms['sms'], $now, $now, $card['id'], 'available'));
+                $numberUpdate = $pdo->prepare('UPDATE jm_yinuopp_numbers SET success_count = success_count + 1, last_success_at = ?, updated_at = ? WHERE phone = ?');
+                $numberUpdate->execute(array($now, $now, $card['phone']));
                 $card['status'] = 'used';
                 $card['sms_code'] = $sms['code'];
                 $card['sms_text'] = $sms['sms'];
@@ -842,9 +927,11 @@ try {
         $provider = jmweb_card_provider($card);
         if ($provider === 'yinuopp') {
             $now = time();
-            $update = $pdo->prepare('UPDATE jm_cards SET expires_at = 0, updated_at = ? WHERE id = ? AND status = ?');
-            $update->execute(array($now, $card['id'], 'available'));
-            jmweb_api_json(array('ok' => true, 'message' => '已取消当前一诺PP激活，可以重新兑换继续查询该号码。'));
+            $pdo = jmweb_ensure_yinuopp_numbers_table();
+            jmweb_yinuopp_mark_number_bad($pdo, isset($card['phone']) ? $card['phone'] : '', isset($card['provider_token']) ? $card['provider_token'] : '');
+            $update = $pdo->prepare('UPDATE jm_cards SET phone = ?, phone_country = ?, provider_host = ?, provider_token = ?, expires_at = 0, updated_at = ? WHERE id = ? AND status = ?');
+            $update->execute(array('', '', '', '', $now, $card['id'], 'available'));
+            jmweb_api_json(array('ok' => true, 'message' => '已记录该一诺PP手机号为问题号，重新兑换会自动分配下一个可用号码。'));
         }
         if ($provider === 'luban') {
             $settings = jmweb_read_settings();
@@ -891,11 +978,20 @@ try {
     if ($action === 'save_settings') {
         jmweb_require_admin();
         $settings = jmweb_clean_settings($_POST);
+        $yinuoppImport = null;
+        if (isset($_POST['yinuopp_inventory']) && trim((string) $_POST['yinuopp_inventory']) !== '') {
+            $yinuoppImport = jmweb_yinuopp_import_inventory($settings['yinuopp_inventory']);
+            $settings['yinuopp_inventory'] = '';
+        }
         if (!jmweb_save_settings($settings)) {
             jmweb_api_json(array('ok' => false, 'message' => '保存失败，请检查 data 目录写入权限。'));
         }
         jmweb_log('管理员保存基本设置');
-        jmweb_api_json(array('ok' => true, 'message' => '基本设置已保存。', 'settings' => jmweb_public_settings($settings)));
+        $message = '基本设置已保存。';
+        if ($yinuoppImport !== null) {
+            $message = '已导入 ' . (int) $yinuoppImport['imported'] . ' 条一诺PP手机号，输入框已清空，可在手机号详情管理。';
+        }
+        jmweb_api_json(array('ok' => true, 'message' => $message, 'settings' => jmweb_public_settings($settings), 'yinuopp_stats' => $yinuoppImport !== null ? $yinuoppImport['stats'] : null));
     }
 
     if ($action === 'reset_settings') {
@@ -930,6 +1026,78 @@ try {
         jmweb_api_json(array_merge(array('project_id' => $projectId), $check));
     }
 
+    if ($action === 'list_yinuopp_numbers') {
+        jmweb_require_admin();
+        $pdo = jmweb_ensure_yinuopp_numbers_table();
+        $limit = jmweb_card_allowed_limit(isset($_POST['limit']) ? $_POST['limit'] : 10);
+        $page = isset($_POST['page']) ? (int) $_POST['page'] : 1;
+        if ($page < 1) $page = 1;
+        $keyword = isset($_POST['keyword']) ? trim((string) $_POST['keyword']) : '';
+        $rawStatuses = isset($_POST['statuses']) ? $_POST['statuses'] : '';
+        if (!is_array($rawStatuses)) {
+            $rawStatuses = $rawStatuses === '' ? array() : explode(',', (string) $rawStatuses);
+        }
+        $numberStatuses = array();
+        foreach ($rawStatuses as $status) {
+            if ($status === 'used') $status = 'bad';
+            if (in_array($status, array('available', 'bad', 'disabled'), true) && !in_array($status, $numberStatuses, true)) {
+                $numberStatuses[] = $status;
+            }
+        }
+        $where = array();
+        $params = array();
+        if ($keyword !== '') {
+            $where[] = '(phone LIKE ? OR sms_api LIKE ?)';
+            $params[] = '%' . $keyword . '%';
+            $params[] = '%' . $keyword . '%';
+        }
+        if (!empty($numberStatuses)) {
+            $marks = implode(',', array_fill(0, count($numberStatuses), '?'));
+            $where[] = 'status IN (' . $marks . ')';
+            foreach ($numberStatuses as $status) $params[] = $status;
+        }
+        $whereSql = empty($where) ? '' : (' WHERE ' . implode(' AND ', $where));
+        $countStmt = $pdo->prepare('SELECT COUNT(*) FROM jm_yinuopp_numbers' . $whereSql);
+        $countStmt->execute($params);
+        $total = (int) $countStmt->fetchColumn();
+        $pages = max(1, (int) ceil($total / $limit));
+        if ($page > $pages) $page = $pages;
+        $offset = ($page - 1) * $limit;
+        $stmt = $pdo->prepare('SELECT * FROM jm_yinuopp_numbers' . $whereSql . ' ORDER BY id DESC LIMIT ' . (int) $limit . ' OFFSET ' . (int) $offset);
+        $stmt->execute($params);
+        jmweb_api_json(array('ok' => true, 'numbers' => jmweb_yinuopp_number_rows($stmt->fetchAll()), 'total' => $total, 'page' => $page, 'pages' => $pages, 'limit' => $limit, 'stats' => jmweb_yinuopp_inventory_stats($pdo)));
+    }
+
+    if ($action === 'batch_yinuopp_numbers') {
+        jmweb_require_admin();
+        $pdo = jmweb_ensure_yinuopp_numbers_table();
+        $ids = jmweb_card_ids_from_request();
+        $batchAction = isset($_POST['batch_action']) ? trim((string) $_POST['batch_action']) : '';
+        if (empty($ids)) {
+            jmweb_api_json(array('ok' => false, 'message' => '请先选择手机号。'));
+        }
+        $marks = implode(',', array_fill(0, count($ids), '?'));
+        $now = time();
+        if ($batchAction === 'delete') {
+            $stmt = $pdo->prepare('DELETE FROM jm_yinuopp_numbers WHERE id IN (' . $marks . ')');
+            $stmt->execute($ids);
+            jmweb_api_json(array('ok' => true, 'message' => '已删除选中的一诺PP手机号。', 'stats' => jmweb_yinuopp_inventory_stats($pdo)));
+        }
+        if ($batchAction === 'enable') {
+            $params = array_merge(array($now), $ids);
+            $stmt = $pdo->prepare("UPDATE jm_yinuopp_numbers SET status = 'available', updated_at = ? WHERE id IN (" . $marks . ')');
+            $stmt->execute($params);
+            jmweb_api_json(array('ok' => true, 'message' => '已启用选中的一诺PP手机号。', 'stats' => jmweb_yinuopp_inventory_stats($pdo)));
+        }
+        if ($batchAction === 'disable') {
+            $params = array_merge(array($now), $ids);
+            $stmt = $pdo->prepare("UPDATE jm_yinuopp_numbers SET status = 'disabled', updated_at = ? WHERE id IN (" . $marks . ')');
+            $stmt->execute($params);
+            jmweb_api_json(array('ok' => true, 'message' => '已禁用选中的一诺PP手机号。', 'stats' => jmweb_yinuopp_inventory_stats($pdo)));
+        }
+        jmweb_api_json(array('ok' => false, 'message' => '未知操作。'));
+    }
+
     if ($action === 'create_yinuopp_cards') {
         jmweb_require_admin();
         $count = isset($_POST['count']) ? (int) $_POST['count'] : 0;
@@ -939,53 +1107,37 @@ try {
         if ($count > 10000) {
             jmweb_api_json(array('ok' => false, 'message' => '一次最多只能制作 10000 张卡密。'));
         }
-        $settings = jmweb_read_settings();
-        $items = jmweb_yinuopp_inventory_items(isset($settings['yinuopp_inventory']) ? $settings['yinuopp_inventory'] : '');
-        if (count($items) < $count) {
-            jmweb_api_json(array('ok' => false, 'message' => '一诺PP可用库存不足，当前只有 ' . count($items) . ' 条。'));
+        $pdo = jmweb_ensure_yinuopp_numbers_table();
+        $stats = jmweb_yinuopp_inventory_stats($pdo);
+        if ((int) $stats['total'] < 1) {
+            jmweb_api_json(array('ok' => false, 'message' => '请先导入一诺PP手机号库存。'));
+        }
+        if ((int) $stats['available'] < 1) {
+            jmweb_api_json(array('ok' => false, 'message' => '一诺PP当前没有可用手机号，请在手机号详情中启用或导入库存。'));
         }
 
-        $pdo = jmweb_ensure_cards_table();
-        $insert = $pdo->prepare('INSERT IGNORE INTO jm_cards (card_no, project_id, status, phone, phone_country, provider_host, provider_token, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)');
+        $insert = $pdo->prepare('INSERT IGNORE INTO jm_cards (card_no, project_id, status, provider_host, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)');
         $created = 0;
         $cards = array();
-        $usedLines = array();
         $now = time();
         $tries = 0;
-        foreach ($items as $item) {
-            if ($created >= $count) {
-                break;
-            }
+        while ($created < $count && $tries < ($count * 8 + 80)) {
             $tries++;
             $cardNo = jmweb_generate_card_no('PP', 'yinuopp');
-            $insert->execute(array($cardNo, 'PP', 'available', $item['phone'], $item['country'], 'yinuopp', $item['api'], $now, $now));
+            $insert->execute(array($cardNo, 'PP', 'available', 'yinuopp', $now, $now));
             if ($insert->rowCount() > 0) {
                 $created++;
                 $cards[] = $cardNo;
-                $usedLines[] = $item['line'];
             }
-            if ($tries > ($count * 8 + 80)) {
-                break;
-            }
-        }
-        if ($created > 0) {
-            $remaining = array();
-            foreach ($items as $item) {
-                if (!in_array($item['line'], $usedLines, true)) {
-                    $remaining[] = $item['line'];
-                }
-            }
-            $settings['yinuopp_inventory'] = implode("\n", $remaining);
-            jmweb_save_settings($settings);
         }
         jmweb_log('管理员生成一诺PP兑换码，数量：' . $created);
         jmweb_api_json(array(
             'ok' => $created === $count,
-            'message' => $created === $count ? '已成功生成 ' . $created . ' 个一诺PP兑换码，并从库存中扣除对应号码。' : '只成功生成 ' . $created . ' 个一诺PP兑换码，请检查库存后重试。',
+            'message' => $created === $count ? '已成功生成 ' . $created . ' 个一诺PP兑换码。手机号会在客户兑换时按负载均衡自动分配，不会消耗库存。' : '只成功生成 ' . $created . ' 个一诺PP兑换码，请重试。',
             'created' => $created,
             'cards' => $cards,
             'sample' => array_slice($cards, 0, 100),
-            'settings' => jmweb_public_settings(jmweb_read_settings()),
+            'yinuopp_stats' => jmweb_yinuopp_inventory_stats($pdo),
         ));
     }
 

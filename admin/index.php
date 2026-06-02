@@ -363,7 +363,7 @@ $jmwebSettings = jmweb_read_settings();
                                 <input name="count" type="number" min="1" max="10000" value="10" placeholder="不能超过当前库存">
                             </label>
                             <button class="btn primary full" type="submit">开始生成</button>
-                            <div id="yinuoppCardCreateMsg" class="settings-msg">请先在配置里添加库存，生成数量不能超过可用库存。</div>
+                            <div id="yinuoppCardCreateMsg" class="settings-msg">手机号池循环复用；当前已用 0 次，可用 0 个（可用=手机号总数）。</div>
                         </form>
                         <div class="card-stats" id="yinuoppCardStats">
                             <div><strong>0</strong><span>全部</span></div>
@@ -410,6 +410,45 @@ $jmwebSettings = jmweb_read_settings();
                             <button class="btn ghost" type="button" id="yinuoppCardPrevPage">上一页</button>
                             <span id="yinuoppCardPageInfo">1 / 1</span>
                             <button class="btn ghost" type="button" id="yinuoppCardNextPage">下一页</button>
+                        </div>
+                    </section>
+                    <section class="settings-card card-list-panel">
+                        <div class="card-list-toolbar">
+                            <div>
+                                <strong>一诺PP手机号详情</strong>
+                                <span id="yinuoppNumberListSummary">一列显示 10 个</span>
+                            </div>
+                            <div class="card-toolbar-controls">
+                                <select id="yinuoppNumberLimitSelect">
+                                    <option value="10">10</option>
+                                    <option value="50">50</option>
+                                    <option value="100">100</option>
+                                    <option value="500">500</option>
+                                    <option value="1000">1000</option>
+                                    <option value="5000">5000</option>
+                                    <option value="10000">10000</option>
+                                </select>
+                                <input id="yinuoppNumberKeyword" placeholder="搜索手机号/API">
+                            </div>
+                        </div>
+                        <div class="card-filter-row">
+                            <label><input type="checkbox" name="yinuopp_number_status" value="available" checked> 可用</label>
+                            <label><input type="checkbox" name="yinuopp_number_status" value="bad" checked> 问题</label>
+                            <label><input type="checkbox" name="yinuopp_number_status" value="disabled" checked> 禁用</label>
+                            <button class="btn ghost" type="button" id="yinuoppNumberRefreshBtn">刷新</button>
+                        </div>
+                        <div class="card-batch-row">
+                            <label><input type="checkbox" id="yinuoppNumberSelectAll"> 全选当前页</label>
+                            <button class="btn ghost" type="button" data-yinuopp-number-batch="enable">启用</button>
+                            <button class="btn ghost danger-soft" type="button" data-yinuopp-number-batch="disable">禁用手机号</button>
+                            <button class="btn ghost danger-soft" type="button" data-yinuopp-number-batch="delete">删除手机号</button>
+                            <span id="yinuoppNumberBatchMsg" class="muted">取消激活/更换手机号会自动记录为问题号</span>
+                        </div>
+                        <div id="yinuoppNumberList" class="card-list empty">正在加载手机号...</div>
+                        <div class="card-pager">
+                            <button class="btn ghost" type="button" id="yinuoppNumberPrevPage">上一页</button>
+                            <span id="yinuoppNumberPageInfo">1 / 1</span>
+                            <button class="btn ghost" type="button" id="yinuoppNumberNextPage">下一页</button>
                         </div>
                     </section>
                 </div>

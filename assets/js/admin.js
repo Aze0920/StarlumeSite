@@ -342,8 +342,10 @@ if (yinuoppSettingsForm) {
         formData.forEach(function (value, key) { payload[key] = value; });
         try {
             var result = await postAdmin('save_settings', payload);
-            setYinuoppSettingsMessage(result.ok ? '一诺PP库存已保存。' : (result.message || '保存失败'), result.ok ? 'success' : 'error');
+            setYinuoppSettingsMessage(result.message || (result.ok ? '一诺PP库存已导入。' : '保存失败'), result.ok ? 'success' : 'error');
             if (result.ok && result.settings) fillSettingsForm(result.settings);
+            if (result.ok && yinuoppNumberBoard) yinuoppNumberBoard.loadNumbers(true);
+            if (result.ok && yinuoppCardBoard) yinuoppCardBoard.loadCards(true);
         } catch (error) {
             setYinuoppSettingsMessage('保存失败：' + error.message, 'error');
         } finally {
@@ -598,6 +600,126 @@ function initCardBoard(config) {
     return { loadCards: loadCards };
 }
 
+function initYinuoppNumberBoard() {
+    if (!document.getElementById('yinuoppNumberList')) return null;
+    var state = { page: 1, pages: 1, limit: 10 };
+    function getStatuses() {
+        var statuses = [];
+        document.querySelectorAll('input[name="yinuopp_number_status"]:checked').forEach(function (item) { statuses.push(item.value); });
+        return statuses;
+    }
+    function selectedIds() {
+        return Array.prototype.slice.call(document.querySelectorAll('.yinuopp-number-check:checked')).map(function (item) { return item.value; });
+    }
+    function renderStats(stats) {
+        var el = document.getElementById('yinuoppCardCreateMsg');
+        if (!el || !stats) return;
+        el.textContent = '手机号池循环复用；当前已用 ' + (stats.used || 0) + ' 次，可用 ' + (stats.total || 0) + ' 个（其中正常 ' + (stats.available || 0) + ' 个，问题 ' + (stats.bad || 0) + ' 个）。';
+        var statBox = document.getElementById('yinuoppCardStats');
+        if (statBox) {
+            statBox.innerHTML = '<div><strong>' + (stats.total || 0) + '</strong><span>手机号总数</span></div>' +
+                '<div><strong>' + (stats.available || 0) + '</strong><span>正常可用</span></div>' +
+                '<div><strong>' + (stats.used || 0) + '</strong><span>已用次数</span></div>' +
+                '<div><strong>' + (stats.bad || 0) + '</strong><span>问题号</span></div>';
+        }
+    }
+    function renderNumbers(numbers) {
+        var list = document.getElementById('yinuoppNumberList');
+        if (!list) return;
+        list.innerHTML = '';
+        if (!numbers || !numbers.length) {
+            list.className = 'card-list empty';
+            list.textContent = '暂无手机号。';
+            return;
+        }
+        list.className = 'card-list';
+        numbers.forEach(function (number) {
+            var item = document.createElement('label');
+            item.className = 'card-item status-' + escapeHtml(number.status || 'available');
+            item.innerHTML = '<input class="yinuopp-number-check" type="checkbox" value="' + number.id + '">' +
+                '<span class="card-no">' + escapeHtml(number.phone_display || number.phone || '-') + '</span>' +
+                '<span class="card-status">' + escapeHtml(number.status_label || '-') + '</span>' +
+                '<span class="card-meta"><b>接码次数：</b>' + escapeHtml(number.success_count || 0) + '</span>' +
+                '<span class="card-meta"><b>分配次数：</b>' + escapeHtml(number.use_count || 0) + '</span>' +
+                '<span class="card-meta"><b>问题次数：</b>' + escapeHtml(number.bad_count || 0) + '</span>' +
+                '<span class="card-meta"><b>最近接码：</b>' + escapeHtml(number.last_success_at_text || '-') + '</span>';
+            list.appendChild(item);
+        });
+        bindCardDragSelect(list, 'yinuopp-number-check');
+    }
+    async function loadNumbers(resetPage) {
+        var list = document.getElementById('yinuoppNumberList');
+        var limitSelect = document.getElementById('yinuoppNumberLimitSelect');
+        var keywordInput = document.getElementById('yinuoppNumberKeyword');
+        var summary = document.getElementById('yinuoppNumberListSummary');
+        var pageInfo = document.getElementById('yinuoppNumberPageInfo');
+        var selectAll = document.getElementById('yinuoppNumberSelectAll');
+        if (!list || !limitSelect) return;
+        if (resetPage) state.page = 1;
+        state.limit = parseInt(limitSelect.value, 10) || 10;
+        if (selectAll) selectAll.checked = false;
+        list.className = 'card-list empty';
+        list.textContent = '正在加载手机号...';
+        try {
+            var result = await postAdmin('list_yinuopp_numbers', { limit: state.limit, page: state.page, keyword: keywordInput ? keywordInput.value : '', statuses: getStatuses().join(',') });
+            if (!result.ok) {
+                list.textContent = result.message || '加载失败';
+                return;
+            }
+            state.page = result.page || 1;
+            state.pages = result.pages || 1;
+            renderNumbers(result.numbers || []);
+            renderStats(result.stats || {});
+            if (summary) summary.textContent = '一列显示 ' + (result.limit || state.limit) + ' 个，共 ' + (result.total || 0) + ' 个';
+            if (pageInfo) pageInfo.textContent = state.page + ' / ' + state.pages;
+        } catch (error) {
+            list.textContent = '加载失败：' + error.message;
+        }
+    }
+    var limitSelect = document.getElementById('yinuoppNumberLimitSelect');
+    if (limitSelect) limitSelect.addEventListener('change', function () { loadNumbers(true); });
+    var refreshBtn = document.getElementById('yinuoppNumberRefreshBtn');
+    if (refreshBtn) refreshBtn.addEventListener('click', function () { loadNumbers(true); });
+    var keywordInput = document.getElementById('yinuoppNumberKeyword');
+    if (keywordInput) keywordInput.addEventListener('keydown', function (event) { if (event.key === 'Enter') loadNumbers(true); });
+    document.querySelectorAll('input[name="yinuopp_number_status"]').forEach(function (item) { item.addEventListener('change', function () { loadNumbers(true); }); });
+    var prevPage = document.getElementById('yinuoppNumberPrevPage');
+    if (prevPage) prevPage.addEventListener('click', function () { if (state.page > 1) { state.page--; loadNumbers(false); } });
+    var nextPage = document.getElementById('yinuoppNumberNextPage');
+    if (nextPage) nextPage.addEventListener('click', function () { if (state.page < state.pages) { state.page++; loadNumbers(false); } });
+    var selectAll = document.getElementById('yinuoppNumberSelectAll');
+    if (selectAll) selectAll.addEventListener('change', function () {
+        document.querySelectorAll('.yinuopp-number-check').forEach(function (item) {
+            item.checked = selectAll.checked;
+            var row = item.closest('.card-item');
+            if (row) row.classList.toggle('is-selected', item.checked);
+        });
+    });
+    document.querySelectorAll('[data-yinuopp-number-batch]').forEach(function (button) {
+        button.addEventListener('click', async function () {
+            var ids = selectedIds();
+            var action = button.getAttribute('data-yinuopp-number-batch');
+            var msg = document.getElementById('yinuoppNumberBatchMsg');
+            if (!ids.length) { setText(msg, '请先选择手机号。'); return; }
+            if (action === 'delete' && !confirm('确定删除选中的一诺PP手机号吗？')) return;
+            if (action === 'disable' && !confirm('确定禁用选中的一诺PP手机号吗？')) return;
+            button.disabled = true;
+            setText(msg, '正在操作...');
+            try {
+                var result = await postAdmin('batch_yinuopp_numbers', { ids: ids.join(','), batch_action: action });
+                setText(msg, result.message || '操作完成');
+                loadNumbers(false);
+            } catch (error) {
+                setText(msg, '操作失败：' + error.message);
+            } finally {
+                button.disabled = false;
+            }
+        });
+    });
+    loadNumbers(true);
+    return { loadNumbers: loadNumbers };
+}
+
 function bindCardDragSelect(list, checkClass) {
     if (!list || list.getAttribute('data-drag-bound') === '1') return;
     list.setAttribute('data-drag-bound', '1');
@@ -816,6 +938,8 @@ var lubanCardBoard = initCardBoard({
     },
 });
 
+var yinuoppNumberBoard = initYinuoppNumberBoard();
+
 var yinuoppCardBoard = initCardBoard({
     provider: 'yinuopp',
     cacheKey: 'jmweb_card_filters_yinuopp',
@@ -932,7 +1056,7 @@ if (yinuoppCardCreateForm) {
         try {
             var result = await postAdmin('create_yinuopp_cards', { count: count });
             setCardMessage(msg, result.message || '制作完成', result.ok ? 'success' : 'error');
-            if (result.ok && result.settings) fillSettingsForm(result.settings);
+            if (result.ok && yinuoppNumberBoard) yinuoppNumberBoard.loadNumbers(true);
             handleCardCreateSuccess(result, yinuoppCardBoard, { prefix: 'YN', projectId: 'PP' });
         } catch (error) {
             setCardMessage(msg, '制作失败：' + error.message, 'error');
