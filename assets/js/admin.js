@@ -232,12 +232,14 @@ if (toggleYinuoppSettingsBtn && yinuoppSettingsForm) {
     });
 }
 
-if (toggleYinuocxSettingsBtn && yinuocxSettingsForm) {
-    toggleYinuocxSettingsBtn.addEventListener('click', function () {
-        var isHidden = yinuocxSettingsForm.classList.toggle('hidden');
-        toggleYinuocxSettingsBtn.textContent = isHidden ? '配置' : '收起配置';
-    });
-}
+document.addEventListener('click', function (event) {
+    var button = event.target.closest ? event.target.closest('#toggleYinuocxSettingsBtn') : null;
+    if (!button) return;
+    var form = document.getElementById('yinuocxSettingsForm');
+    if (!form) return;
+    var isHidden = form.classList.toggle('hidden');
+    button.textContent = isHidden ? '配置' : '收起配置';
+});
 
 if (settingsForm) {
     settingsForm.addEventListener('submit', async function (event) {

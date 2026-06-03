@@ -1,8 +1,8 @@
 {
-  "version": "1.0.62",
+  "version": "1.0.63",
   "name": "豪猪接码",
   "repo": "https://github.com/Aze0920/StarlumeSite",
   "branch": "main",
   "release_date": "2026-06-03",
-  "description": "新增一诺CX分支，复用一诺PP同款库存池、负载均衡、接码统计、问题号自动禁用和后台管理。"
+  "description": "修复一诺CX配置按钮因后台脚本缓存或绑定时机导致无法展开的问题。"
 }

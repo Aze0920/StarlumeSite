@@ -671,6 +671,6 @@ $jmwebSettings = jmweb_read_settings();
         </main>
     </div>
 <?php endif; ?>
-<script src="../assets/js/admin.js"></script>
+<script src="../assets/js/admin.js?v=<?= urlencode(JMWEB_VERSION) ?>"></script>
 </body>
 </html>
