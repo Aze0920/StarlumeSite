@@ -672,5 +672,216 @@ $jmwebSettings = jmweb_read_settings();
     </div>
 <?php endif; ?>
 <script src="../assets/js/admin.js?v=<?= urlencode(JMWEB_VERSION) ?>"></script>
+<script>
+(function () {
+    function postCx(action, payload) {
+        var form = new FormData();
+        form.append('action', action);
+        payload = payload || {};
+        Object.keys(payload).forEach(function (key) { form.append(key, payload[key]); });
+        return fetch('../api/admin.php', { method: 'POST', body: form, credentials: 'same-origin' }).then(function (response) {
+            return response.text();
+        }).then(function (text) {
+            try { return JSON.parse(text); } catch (e) { return { ok: false, message: '服务器返回异常：' + text.replace(/<[^>]+>/g, ' ').trim().slice(0, 200) }; }
+        });
+    }
+    function text(id, value, type) {
+        var el = document.getElementById(id);
+        if (!el) return;
+        el.textContent = value || '';
+        if (type) el.className = 'settings-msg ' + type;
+    }
+    function esc(value) {
+        return String(value == null ? '' : value).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' }[c]; });
+    }
+    function cxStatuses(name) {
+        var values = [];
+        document.querySelectorAll('input[name="' + name + '"]:checked').forEach(function (item) { values.push(item.value); });
+        return values.join(',');
+    }
+    function setCxMode(mode) {
+        var cards = document.getElementById('yinuocxCardsPanel');
+        var numbers = document.getElementById('yinuocxNumbersPanel');
+        var summary = document.getElementById('yinuocxModeSummary');
+        if (!cards || !numbers) return;
+        var showNumbers = mode === 'numbers';
+        cards.classList.toggle('hidden', showNumbers);
+        numbers.classList.toggle('hidden', !showNumbers);
+        document.querySelectorAll('[data-yinuocx-mode]').forEach(function (button) {
+            var active = button.getAttribute('data-yinuocx-mode') === mode;
+            button.classList.toggle('primary', active);
+            button.classList.toggle('ghost', !active);
+        });
+        if (summary) summary.textContent = showNumbers ? '当前查看手机号详情，可管理删除手机号。' : '当前查看卡密详情，可复制、启用、禁用或删除卡密。';
+        if (showNumbers) loadCxNumbers(true); else loadCxCards(true);
+    }
+    function renderCxStats(numberStats, cardStats) {
+        var box = document.getElementById('yinuocxCardStats');
+        if (!box) return;
+        numberStats = numberStats || window.__cxNumberStats || {};
+        cardStats = cardStats || window.__cxCardStats || {};
+        window.__cxNumberStats = numberStats;
+        window.__cxCardStats = cardStats;
+        var items = [[numberStats.total || 0, '手机号总数'], [numberStats.available || 0, '正常可用'], [numberStats.used || 0, '分配次数'], [numberStats.success || 0, '接码成功'], [numberStats.bad || 0, '问题号'], [numberStats.disabled || 0, '禁用号'], [cardStats.available || 0, '可用卡密'], [cardStats.used || 0, '已用卡密']];
+        box.innerHTML = items.map(function (item) { return '<div><strong>' + item[0] + '</strong><span>' + item[1] + '</span></div>'; }).join('');
+    }
+    function loadCxCards(reset) {
+        var list = document.getElementById('yinuocxCardList');
+        if (!list) return;
+        var limit = document.getElementById('yinuocxCardLimitSelect');
+        var keyword = document.getElementById('yinuocxCardKeyword');
+        window.__cxCardPage = reset ? 1 : (window.__cxCardPage || 1);
+        list.className = 'card-list empty';
+        list.textContent = '正在加载卡密...';
+        postCx('list_cards', { provider: 'yinuocx', limit: limit ? limit.value : 10, page: window.__cxCardPage, keyword: keyword ? keyword.value : '', statuses: cxStatuses('yinuocx_card_status') }).then(function (result) {
+            if (!result.ok) { list.textContent = result.message || '加载失败'; return; }
+            window.__cxCardPage = result.page || 1;
+            window.__cxCardPages = result.pages || 1;
+            var summary = document.getElementById('yinuocxCardListSummary');
+            var pageInfo = document.getElementById('yinuocxCardPageInfo');
+            if (summary) summary.textContent = '一列显示 ' + (result.limit || (limit ? limit.value : 10)) + ' 个，共 ' + (result.total || 0) + ' 个';
+            if (pageInfo) pageInfo.textContent = window.__cxCardPage + ' / ' + window.__cxCardPages;
+            renderCxStats(null, result.stats || {});
+            var cards = result.cards || [];
+            if (!cards.length) { list.textContent = '暂无卡密。'; return; }
+            list.className = 'card-list';
+            list.innerHTML = cards.map(function (card) {
+                return '<label class="card-item status-' + esc(card.status) + '"><input class="yinuocx-card-check" type="checkbox" value="' + esc(card.id) + '" data-card-no="' + esc(card.card_no) + '"><span class="card-no">' + esc(card.card_no) + '</span><span class="card-status">' + esc(card.status_label) + '</span><span class="card-meta"><b>项目ID：</b>' + esc(card.project_id || '-') + '</span><span class="card-meta"><b>手机号：</b>' + esc(card.phone || '-') + '</span><span class="card-meta"><b>验证码：</b>' + esc(card.sms_code || '-') + '</span></label>';
+            }).join('');
+        });
+    }
+    function loadCxNumbers(reset) {
+        var list = document.getElementById('yinuocxNumberList');
+        if (!list) return;
+        var limit = document.getElementById('yinuocxNumberLimitSelect');
+        var keyword = document.getElementById('yinuocxNumberKeyword');
+        window.__cxNumberPage = reset ? 1 : (window.__cxNumberPage || 1);
+        list.className = 'card-list empty';
+        list.textContent = '正在加载手机号...';
+        postCx('list_yinuocx_numbers', { limit: limit ? limit.value : 10, page: window.__cxNumberPage, keyword: keyword ? keyword.value : '', statuses: cxStatuses('yinuocx_number_status') }).then(function (result) {
+            if (!result.ok) { list.textContent = result.message || '加载失败'; return; }
+            window.__cxNumberPage = result.page || 1;
+            window.__cxNumberPages = result.pages || 1;
+            var summary = document.getElementById('yinuocxNumberListSummary');
+            var pageInfo = document.getElementById('yinuocxNumberPageInfo');
+            if (summary) summary.textContent = '一列显示 ' + (result.limit || (limit ? limit.value : 10)) + ' 个，共 ' + (result.total || 0) + ' 个';
+            if (pageInfo) pageInfo.textContent = window.__cxNumberPage + ' / ' + window.__cxNumberPages;
+            renderCxStats(result.stats || {}, null);
+            var nums = result.numbers || [];
+            if (!nums.length) { list.textContent = '暂无手机号。'; return; }
+            list.className = 'card-list yinuopp-number-table';
+            list.innerHTML = '<div class="yinuopp-number-row yinuopp-number-head"><span>选择框</span><span>区号</span><span>手机号</span><span>最近接码</span><span>可用</span><span>接码次数</span><span>分配次数</span><span>问题次数</span></div>' + nums.map(function (n) {
+                return '<label class="yinuopp-number-row status-' + esc(n.status || 'available') + '"><span><input class="yinuocx-number-check" type="checkbox" value="' + esc(n.id) + '"></span><span class="number-area">' + esc(n.phone_area || '-') + '</span><span class="number-local">' + esc(n.phone_local || n.phone || '-') + '</span><span>' + esc(n.last_success_at_text || '-') + '</span><span class="card-status">' + esc(n.status_label || '-') + '</span><span>' + esc(n.success_count || 0) + '</span><span>' + esc(n.use_count || 0) + '</span><span>' + esc(n.bad_count || 0) + '</span></label>';
+            }).join('');
+        });
+    }
+    document.addEventListener('click', function (event) {
+        var pageBtn = event.target.closest && event.target.closest('.side-link[data-page], [data-page].version-jump, .version-stat[data-page]');
+        if (pageBtn) {
+            var pageName = pageBtn.getAttribute('data-page') || 'dashboard';
+            document.querySelectorAll('.admin-page').forEach(function (page) { page.classList.add('hidden'); });
+            var target = document.getElementById('page-' + pageName);
+            if (target) target.classList.remove('hidden');
+            document.querySelectorAll('.side-link[data-page]').forEach(function (item) { item.classList.toggle('active', item.getAttribute('data-page') === pageName); });
+            try { localStorage.setItem('jmweb_admin_page', pageName); } catch (e) {}
+        }
+        var configBtn = event.target.closest && event.target.closest('#toggleYinuocxSettingsBtn');
+        if (configBtn) {
+            event.preventDefault();
+            var form = document.getElementById('yinuocxSettingsForm');
+            if (form) { var hidden = form.classList.toggle('hidden'); configBtn.textContent = hidden ? '配置' : '收起配置'; }
+        }
+        var modeBtn = event.target.closest && event.target.closest('[data-yinuocx-mode]');
+        if (modeBtn) { event.preventDefault(); setCxMode(modeBtn.getAttribute('data-yinuocx-mode') || 'cards'); }
+        if (event.target.closest && event.target.closest('#yinuocxCardRefreshBtn')) { event.preventDefault(); loadCxCards(true); }
+        if (event.target.closest && event.target.closest('#yinuocxNumberRefreshBtn')) { event.preventDefault(); loadCxNumbers(true); }
+        if (event.target.closest && event.target.closest('#yinuocxCardPrevPage')) { event.preventDefault(); window.__cxCardPage = Math.max(1, (window.__cxCardPage || 1) - 1); loadCxCards(false); }
+        if (event.target.closest && event.target.closest('#yinuocxCardNextPage')) { event.preventDefault(); window.__cxCardPage = Math.min(window.__cxCardPages || 1, (window.__cxCardPage || 1) + 1); loadCxCards(false); }
+        if (event.target.closest && event.target.closest('#yinuocxNumberPrevPage')) { event.preventDefault(); window.__cxNumberPage = Math.max(1, (window.__cxNumberPage || 1) - 1); loadCxNumbers(false); }
+        if (event.target.closest && event.target.closest('#yinuocxNumberNextPage')) { event.preventDefault(); window.__cxNumberPage = Math.min(window.__cxNumberPages || 1, (window.__cxNumberPage || 1) + 1); loadCxNumbers(false); }
+        if (event.target.closest && event.target.closest('#yinuocxCardSelectAll')) {
+            document.querySelectorAll('.yinuocx-card-check').forEach(function (item) { item.checked = event.target.checked; });
+        }
+        if (event.target.closest && event.target.closest('#yinuocxNumberSelectAll')) {
+            document.querySelectorAll('.yinuocx-number-check').forEach(function (item) { item.checked = event.target.checked; });
+        }
+        if (event.target.closest && event.target.closest('#yinuocxCopyCardsBtn')) {
+            event.preventDefault();
+            var selectedCards = Array.prototype.slice.call(document.querySelectorAll('.yinuocx-card-check:checked')).map(function (item) { return item.getAttribute('data-card-no') || ''; }).filter(Boolean);
+            if (!selectedCards.length) { text('yinuocxCardBatchMsg', '请先选择卡密。'); return; }
+            var copied = selectedCards.join('\n');
+            if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(copied);
+            else {
+                var tmp = document.createElement('textarea');
+                tmp.value = copied;
+                document.body.appendChild(tmp);
+                tmp.select();
+                document.execCommand('copy');
+                document.body.removeChild(tmp);
+            }
+            var msg = document.getElementById('yinuocxCardBatchMsg');
+            if (msg) msg.textContent = '已复制 ' + selectedCards.length + ' 个卡密。';
+        }
+        var cardBatchBtn = event.target.closest && event.target.closest('[data-yinuocx-card-batch]');
+        if (cardBatchBtn) {
+            event.preventDefault();
+            var cardIds = Array.prototype.slice.call(document.querySelectorAll('.yinuocx-card-check:checked')).map(function (item) { return item.value; });
+            var cardAction = cardBatchBtn.getAttribute('data-yinuocx-card-batch') || '';
+            if (!cardIds.length) { var cmsg = document.getElementById('yinuocxCardBatchMsg'); if (cmsg) cmsg.textContent = '请先选择卡密。'; return; }
+            if (cardAction === 'delete' && !confirm('确定删除选中的卡密吗？')) return;
+            if (cardAction === 'disable' && !confirm('确定禁用选中的卡密吗？禁用后前台无法继续使用。')) return;
+            postCx('batch_cards', { ids: cardIds.join(','), batch_action: cardAction }).then(function (result) {
+                var cmsg = document.getElementById('yinuocxCardBatchMsg');
+                if (cmsg) cmsg.textContent = result.message || '操作完成';
+                loadCxCards(false);
+            });
+        }
+        var numberBatchBtn = event.target.closest && event.target.closest('[data-yinuocx-number-batch]');
+        if (numberBatchBtn) {
+            event.preventDefault();
+            var numberIds = Array.prototype.slice.call(document.querySelectorAll('.yinuocx-number-check:checked')).map(function (item) { return item.value; });
+            var numberAction = numberBatchBtn.getAttribute('data-yinuocx-number-batch') || '';
+            if (!numberIds.length) { var nmsg = document.getElementById('yinuocxNumberBatchMsg'); if (nmsg) nmsg.textContent = '请先选择手机号。'; return; }
+            if (numberAction === 'delete' && !confirm('确定删除选中的手机号吗？')) return;
+            if (numberAction === 'disable' && !confirm('确定禁用选中的手机号吗？')) return;
+            postCx('batch_yinuocx_numbers', { ids: numberIds.join(','), batch_action: numberAction }).then(function (result) {
+                var nmsg = document.getElementById('yinuocxNumberBatchMsg');
+                if (nmsg) nmsg.textContent = result.message || '操作完成';
+                loadCxNumbers(false);
+            });
+        }
+    }, true);
+    document.addEventListener('submit', function (event) {
+        if (event.target && event.target.id === 'yinuocxSettingsForm') {
+            event.preventDefault();
+            event.stopImmediatePropagation();
+            text('yinuocxSettingsMsg', '正在保存一诺CX库存...');
+            var payload = {};
+            new FormData(event.target).forEach(function (value, key) { payload[key] = value; });
+            postCx('save_settings', payload).then(function (result) {
+                text('yinuocxSettingsMsg', result.message || (result.ok ? '一诺CX库存已导入。' : '保存失败'), result.ok ? 'success' : 'error');
+                if (result.ok && event.target.elements.yinuocx_inventory) event.target.elements.yinuocx_inventory.value = '';
+                if (result.ok) { loadCxNumbers(true); loadCxCards(true); }
+            });
+        }
+        if (event.target && event.target.id === 'yinuocxCardCreateForm') {
+            event.preventDefault();
+            event.stopImmediatePropagation();
+            var count = event.target.elements.count ? event.target.elements.count.value : 0;
+            text('yinuocxCardCreateMsg', '正在生成一诺CX兑换码...');
+            postCx('create_yinuocx_cards', { count: count }).then(function (result) {
+                text('yinuocxCardCreateMsg', result.message || '制作完成', result.ok ? 'success' : 'error');
+                if (result.ok) loadCxCards(true);
+            });
+        }
+    }, true);
+    ['yinuocxCardLimitSelect', 'yinuocxCardKeyword'].forEach(function (id) { var el = document.getElementById(id); if (el) el.addEventListener(id.indexOf('Keyword') > -1 ? 'keydown' : 'change', function (e) { if (e.type === 'change' || e.key === 'Enter') loadCxCards(true); }); });
+    ['yinuocxNumberLimitSelect', 'yinuocxNumberKeyword'].forEach(function (id) { var el = document.getElementById(id); if (el) el.addEventListener(id.indexOf('Keyword') > -1 ? 'keydown' : 'change', function (e) { if (e.type === 'change' || e.key === 'Enter') loadCxNumbers(true); }); });
+    document.querySelectorAll('input[name="yinuocx_card_status"]').forEach(function (el) { el.addEventListener('change', function () { loadCxCards(true); }); });
+    document.querySelectorAll('input[name="yinuocx_number_status"]').forEach(function (el) { el.addEventListener('change', function () { loadCxNumbers(true); }); });
+    loadCxCards(true);
+    loadCxNumbers(true);
+})();
+</script>
 </body>
 </html>

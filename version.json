@@ -1,8 +1,8 @@
 {
-  "version": "1.0.65",
+  "version": "1.0.66",
   "name": "豪猪接码",
   "repo": "https://github.com/Aze0920/StarlumeSite",
   "branch": "main",
   "release_date": "2026-06-03",
-  "description": "将一诺CX配置展开逻辑恢复为一诺PP同款独立绑定，保持两个平台独立配置和独立管理。"
+  "description": "为一诺CX后台补充独立兜底交互逻辑，覆盖配置展开、库存导入、卡密生成、卡密详情、手机号详情、分页、刷新、复制和批量操作。"
 }
