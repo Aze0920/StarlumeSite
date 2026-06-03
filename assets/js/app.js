@@ -151,7 +151,9 @@
             var cancelRemain = Math.max(0, (cancelAvailableAt || 0) - now);
             var expireRemain = expiresAt ? Math.max(0, expiresAt - now) : 0;
             if (cancelActivation) cancelActivation.disabled = cancelRemain > 0;
-            if (cancelCountdown) cancelCountdown.textContent = cancelRemain > 0 ? cancelRemain + ' 秒后可取消激活' : '可以取消激活';
+            if (cancelCountdown) {
+                cancelCountdown.textContent = cancelRemain > 0 ? ('可更换时间：' + formatTimeBySeconds(cancelAvailableAt) + '（剩余 ' + cancelRemain + ' 秒）') : '现在可以更换手机号';
+            }
             if (expiresAt && expireRemain <= 0) {
                 stopPolling();
                 if (activationState && currentActivation && !currentActivation.code) activationState.textContent = '已超时';

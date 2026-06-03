@@ -15,6 +15,7 @@ function jmweb_default_settings()
         'haozhu_release_api' => '',
         'luban_apikey' => '',
         'yinuopp_inventory' => '',
+        'yinuocx_inventory' => '',
     );
 }
 
@@ -101,7 +102,7 @@ function jmweb_clean_settings($input)
     $settings['exchange_expire_minutes'] = isset($input['exchange_expire_minutes']) ? (int) $input['exchange_expire_minutes'] : (isset($current['exchange_expire_minutes']) ? (int) $current['exchange_expire_minutes'] : (int) $defaults['exchange_expire_minutes']);
     $settings['cancel_wait_minutes'] = isset($input['cancel_wait_minutes']) ? (int) $input['cancel_wait_minutes'] : (isset($current['cancel_wait_minutes']) ? (int) $current['cancel_wait_minutes'] : (int) $defaults['cancel_wait_minutes']);
     $settings['active_sms_provider'] = isset($input['active_sms_provider']) ? trim((string) $input['active_sms_provider']) : (isset($current['active_sms_provider']) ? (string) $current['active_sms_provider'] : $defaults['active_sms_provider']);
-    if (!in_array($settings['active_sms_provider'], array('haozhu', 'luban', 'yinuopp'), true)) {
+    if (!in_array($settings['active_sms_provider'], array('haozhu', 'luban', 'yinuopp', 'yinuocx'), true)) {
         $settings['active_sms_provider'] = 'haozhu';
     }
     $settings['haozhu_api_hosts'] = isset($input['haozhu_api_hosts']) ? jmweb_clean_multiline_hosts($input['haozhu_api_hosts']) : (isset($current['haozhu_api_hosts']) ? (string) $current['haozhu_api_hosts'] : $defaults['haozhu_api_hosts']);
@@ -116,6 +117,7 @@ function jmweb_clean_settings($input)
     }
     $settings['haozhu_release_api'] = isset($input['haozhu_release_api']) ? trim((string) $input['haozhu_release_api']) : (isset($current['haozhu_release_api']) ? (string) $current['haozhu_release_api'] : '');
     $settings['yinuopp_inventory'] = isset($input['yinuopp_inventory']) ? jmweb_clean_yinuopp_inventory($input['yinuopp_inventory']) : (isset($current['yinuopp_inventory']) ? (string) $current['yinuopp_inventory'] : $defaults['yinuopp_inventory']);
+    $settings['yinuocx_inventory'] = isset($input['yinuocx_inventory']) ? jmweb_clean_yinuopp_inventory($input['yinuocx_inventory']) : (isset($current['yinuocx_inventory']) ? (string) $current['yinuocx_inventory'] : $defaults['yinuocx_inventory']);
     if (isset($input['luban_apikey'])) {
         $settings['luban_apikey'] = trim((string) $input['luban_apikey']);
         if ($settings['luban_apikey'] === '' && !empty($current['luban_apikey'])) {

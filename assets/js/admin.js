@@ -170,7 +170,7 @@ if (updateBtn) {
 
 function fillSettingsForm(settings) {
     if (!settings) return;
-    [document.getElementById('settingsForm'), document.getElementById('haozhuSettingsForm'), document.getElementById('lubanSettingsForm'), document.getElementById('yinuoppSettingsForm')].forEach(function (form) {
+    [document.getElementById('settingsForm'), document.getElementById('haozhuSettingsForm'), document.getElementById('lubanSettingsForm'), document.getElementById('yinuoppSettingsForm'), document.getElementById('yinuocxSettingsForm')].forEach(function (form) {
         if (!form) return;
         Object.keys(settings).forEach(function (key) {
             if (!form.elements[key]) return;
@@ -207,6 +207,9 @@ var toggleLubanSettingsBtn = document.getElementById('toggleLubanSettingsBtn');
 var yinuoppSettingsForm = document.getElementById('yinuoppSettingsForm');
 var yinuoppSettingsMsg = document.getElementById('yinuoppSettingsMsg');
 var toggleYinuoppSettingsBtn = document.getElementById('toggleYinuoppSettingsBtn');
+var yinuocxSettingsForm = document.getElementById('yinuocxSettingsForm');
+var yinuocxSettingsMsg = document.getElementById('yinuocxSettingsMsg');
+var toggleYinuocxSettingsBtn = document.getElementById('toggleYinuocxSettingsBtn');
 
 if (toggleHaozhuSettingsBtn && haozhuSettingsForm) {
     toggleHaozhuSettingsBtn.addEventListener('click', function () {
@@ -226,6 +229,13 @@ if (toggleYinuoppSettingsBtn && yinuoppSettingsForm) {
     toggleYinuoppSettingsBtn.addEventListener('click', function () {
         var isHidden = yinuoppSettingsForm.classList.toggle('hidden');
         toggleYinuoppSettingsBtn.textContent = isHidden ? '配置' : '收起配置';
+    });
+}
+
+if (toggleYinuocxSettingsBtn && yinuocxSettingsForm) {
+    toggleYinuocxSettingsBtn.addEventListener('click', function () {
+        var isHidden = yinuocxSettingsForm.classList.toggle('hidden');
+        toggleYinuocxSettingsBtn.textContent = isHidden ? '配置' : '收起配置';
     });
 }
 
@@ -352,6 +362,41 @@ if (yinuoppSettingsForm) {
             if (submitButton) {
                 submitButton.disabled = false;
                 submitButton.textContent = '保存一诺PP库存';
+            }
+        }
+    });
+}
+
+function setYinuocxSettingsMessage(message, type) {
+    if (!yinuocxSettingsMsg) return;
+    yinuocxSettingsMsg.textContent = message;
+    yinuocxSettingsMsg.className = 'settings-msg' + (type ? ' ' + type : '');
+}
+
+if (yinuocxSettingsForm) {
+    yinuocxSettingsForm.addEventListener('submit', async function (event) {
+        event.preventDefault();
+        var submitButton = yinuocxSettingsForm.querySelector('button[type="submit"]');
+        if (submitButton) {
+            submitButton.disabled = true;
+            submitButton.textContent = '保存中...';
+        }
+        setYinuocxSettingsMessage('正在保存一诺CX库存...');
+        var formData = new FormData(yinuocxSettingsForm);
+        var payload = {};
+        formData.forEach(function (value, key) { payload[key] = value; });
+        try {
+            var result = await postAdmin('save_settings', payload);
+            setYinuocxSettingsMessage(result.message || (result.ok ? '一诺CX库存已导入。' : '保存失败'), result.ok ? 'success' : 'error');
+            if (result.ok && result.settings) fillSettingsForm(result.settings);
+            if (result.ok && yinuocxNumberBoard) yinuocxNumberBoard.loadNumbers(true);
+            if (result.ok && yinuocxCardBoard) yinuocxCardBoard.loadCards(true);
+        } catch (error) {
+            setYinuocxSettingsMessage('保存失败：' + error.message, 'error');
+        } finally {
+            if (submitButton) {
+                submitButton.disabled = false;
+                submitButton.textContent = '保存一诺CX库存';
             }
         }
     });
@@ -508,7 +553,11 @@ function initCardBoard(config) {
             renderCards(result.cards || []);
             if (config.provider === 'yinuopp') {
                 yinuoppCardStatsData = result.stats || {};
-                renderYinuoppCombinedStats();
+                renderYinuoCombinedStats('yinuopp');
+            }
+            if (config.provider === 'yinuocx') {
+                yinuocxCardStatsData = result.stats || {};
+                renderYinuoCombinedStats('yinuocx');
             }
             if (!config.skipStats) renderStats(result.stats || {});
             if (summary) summary.textContent = '一列显示 ' + (result.limit || state.limit) + ' 个，共 ' + (result.total || 0) + ' 个';
@@ -606,11 +655,14 @@ function initCardBoard(config) {
 
 var yinuoppNumberStatsData = {};
 var yinuoppCardStatsData = {};
+var yinuocxNumberStatsData = {};
+var yinuocxCardStatsData = {};
 
-function renderYinuoppCombinedStats() {
-    var stats = yinuoppNumberStatsData || {};
-    var cards = yinuoppCardStatsData || {};
-    var statBox = document.getElementById('yinuoppCardStats');
+function renderYinuoCombinedStats(key) {
+    key = key || 'yinuopp';
+    var stats = key === 'yinuocx' ? (yinuocxNumberStatsData || {}) : (yinuoppNumberStatsData || {});
+    var cards = key === 'yinuocx' ? (yinuocxCardStatsData || {}) : (yinuoppCardStatsData || {});
+    var statBox = document.getElementById(key + 'CardStats');
     if (!statBox) return;
     var items = [
         [stats.total || 0, '手机号总数'],
@@ -627,51 +679,61 @@ function renderYinuoppCombinedStats() {
     }).join('');
 }
 
-function initYinuoppModeSwitcher() {
-    var cardsPanel = document.getElementById('yinuoppCardsPanel');
-    var numbersPanel = document.getElementById('yinuoppNumbersPanel');
-    var summary = document.getElementById('yinuoppModeSummary');
-    var buttons = document.querySelectorAll('[data-yinuopp-mode]');
+function renderYinuoppCombinedStats() {
+    renderYinuoCombinedStats('yinuopp');
+}
+
+function initYinuoppModeSwitcher(key) {
+    key = key || 'yinuopp';
+    var cap = key === 'yinuocx' ? 'yinuocx' : 'yinuopp';
+    var cardsPanel = document.getElementById(cap + 'CardsPanel');
+    var numbersPanel = document.getElementById(cap + 'NumbersPanel');
+    var summary = document.getElementById(cap + 'ModeSummary');
+    var buttons = document.querySelectorAll('[data-' + cap + '-mode]');
     if (!cardsPanel || !numbersPanel || !buttons.length) return;
     function setMode(mode) {
         var showNumbers = mode === 'numbers';
         cardsPanel.classList.toggle('hidden', showNumbers);
         numbersPanel.classList.toggle('hidden', !showNumbers);
         buttons.forEach(function (button) {
-            var active = button.getAttribute('data-yinuopp-mode') === mode;
+            var active = button.getAttribute('data-' + cap + '-mode') === mode;
             button.classList.toggle('primary', active);
             button.classList.toggle('ghost', !active);
         });
         if (summary) summary.textContent = showNumbers ? '当前查看手机号详情，可管理删除手机号。' : '当前查看卡密详情，可复制、启用、禁用或删除卡密。';
-        try { localStorage.setItem('jmweb_yinuopp_detail_mode', mode); } catch (e) {}
+        try { localStorage.setItem('jmweb_' + cap + '_detail_mode', mode); } catch (e) {}
     }
     buttons.forEach(function (button) {
         button.addEventListener('click', function () {
-            setMode(button.getAttribute('data-yinuopp-mode') || 'cards');
+            setMode(button.getAttribute('data-' + cap + '-mode') || 'cards');
         });
     });
     var saved = 'cards';
-    try { saved = localStorage.getItem('jmweb_yinuopp_detail_mode') || 'cards'; } catch (e) { saved = 'cards'; }
+    try { saved = localStorage.getItem('jmweb_' + cap + '_detail_mode') || 'cards'; } catch (e) { saved = 'cards'; }
     setMode(saved === 'numbers' ? 'numbers' : 'cards');
 }
 
-function initYinuoppNumberBoard() {
-    if (!document.getElementById('yinuoppNumberList')) return null;
+function initYinuoppNumberBoard(key) {
+    key = key || 'yinuopp';
+    var cap = key === 'yinuocx' ? 'yinuocx' : 'yinuopp';
+    var checkClass = cap + '-number-check';
+    if (!document.getElementById(cap + 'NumberList')) return null;
     var state = { page: 1, pages: 1, limit: 10 };
     function getStatuses() {
         var statuses = [];
-        document.querySelectorAll('input[name="yinuopp_number_status"]:checked').forEach(function (item) { statuses.push(item.value); });
+        document.querySelectorAll('input[name="' + cap + '_number_status"]:checked').forEach(function (item) { statuses.push(item.value); });
         return statuses;
     }
     function selectedIds() {
-        return Array.prototype.slice.call(document.querySelectorAll('.yinuopp-number-check:checked')).map(function (item) { return item.value; });
+        return Array.prototype.slice.call(document.querySelectorAll('.' + checkClass + ':checked')).map(function (item) { return item.value; });
     }
     function renderStats(stats) {
-        yinuoppNumberStatsData = stats || {};
-        renderYinuoppCombinedStats();
+        if (cap === 'yinuocx') yinuocxNumberStatsData = stats || {};
+        else yinuoppNumberStatsData = stats || {};
+        renderYinuoCombinedStats(cap);
     }
     function renderNumbers(numbers) {
-        var list = document.getElementById('yinuoppNumberList');
+        var list = document.getElementById(cap + 'NumberList');
         if (!list) return;
         list.innerHTML = '';
         if (!numbers || !numbers.length) {
@@ -687,7 +749,7 @@ function initYinuoppNumberBoard() {
         numbers.forEach(function (number) {
             var item = document.createElement('label');
             item.className = 'yinuopp-number-row status-' + escapeHtml(number.status || 'available');
-            item.innerHTML = '<span><input class="yinuopp-number-check" type="checkbox" value="' + number.id + '"></span>' +
+            item.innerHTML = '<span><input class="' + checkClass + '" type="checkbox" value="' + number.id + '"></span>' +
                 '<span class="number-area">' + escapeHtml(number.phone_area || '-') + '</span>' +
                 '<span class="number-local">' + escapeHtml(number.phone_local || number.phone || '-') + '</span>' +
                 '<span>' + escapeHtml(number.last_success_at_text || '-') + '</span>' +
@@ -697,15 +759,15 @@ function initYinuoppNumberBoard() {
                 '<span>' + escapeHtml(number.bad_count || 0) + '</span>';
             list.appendChild(item);
         });
-        bindCardDragSelect(list, 'yinuopp-number-check');
+        bindCardDragSelect(list, checkClass);
     }
     async function loadNumbers(resetPage) {
-        var list = document.getElementById('yinuoppNumberList');
-        var limitSelect = document.getElementById('yinuoppNumberLimitSelect');
-        var keywordInput = document.getElementById('yinuoppNumberKeyword');
-        var summary = document.getElementById('yinuoppNumberListSummary');
-        var pageInfo = document.getElementById('yinuoppNumberPageInfo');
-        var selectAll = document.getElementById('yinuoppNumberSelectAll');
+        var list = document.getElementById(cap + 'NumberList');
+        var limitSelect = document.getElementById(cap + 'NumberLimitSelect');
+        var keywordInput = document.getElementById(cap + 'NumberKeyword');
+        var summary = document.getElementById(cap + 'NumberListSummary');
+        var pageInfo = document.getElementById(cap + 'NumberPageInfo');
+        var selectAll = document.getElementById(cap + 'NumberSelectAll');
         if (!list || !limitSelect) return;
         if (resetPage) state.page = 1;
         state.limit = parseInt(limitSelect.value, 10) || 10;
@@ -713,7 +775,7 @@ function initYinuoppNumberBoard() {
         list.className = 'card-list empty';
         list.textContent = '正在加载手机号...';
         try {
-            var result = await postAdmin('list_yinuopp_numbers', { limit: state.limit, page: state.page, keyword: keywordInput ? keywordInput.value : '', statuses: getStatuses().join(',') });
+            var result = await postAdmin('list_' + cap + '_numbers', { limit: state.limit, page: state.page, keyword: keywordInput ? keywordInput.value : '', statuses: getStatuses().join(',') });
             if (!result.ok) {
                 list.textContent = result.message || '加载失败';
                 return;
@@ -728,37 +790,37 @@ function initYinuoppNumberBoard() {
             list.textContent = '加载失败：' + error.message;
         }
     }
-    var limitSelect = document.getElementById('yinuoppNumberLimitSelect');
+    var limitSelect = document.getElementById(cap + 'NumberLimitSelect');
     if (limitSelect) limitSelect.addEventListener('change', function () { loadNumbers(true); });
-    var refreshBtn = document.getElementById('yinuoppNumberRefreshBtn');
+    var refreshBtn = document.getElementById(cap + 'NumberRefreshBtn');
     if (refreshBtn) refreshBtn.addEventListener('click', function () { loadNumbers(true); });
-    var keywordInput = document.getElementById('yinuoppNumberKeyword');
+    var keywordInput = document.getElementById(cap + 'NumberKeyword');
     if (keywordInput) keywordInput.addEventListener('keydown', function (event) { if (event.key === 'Enter') loadNumbers(true); });
-    document.querySelectorAll('input[name="yinuopp_number_status"]').forEach(function (item) { item.addEventListener('change', function () { loadNumbers(true); }); });
-    var prevPage = document.getElementById('yinuoppNumberPrevPage');
+    document.querySelectorAll('input[name="' + cap + '_number_status"]').forEach(function (item) { item.addEventListener('change', function () { loadNumbers(true); }); });
+    var prevPage = document.getElementById(cap + 'NumberPrevPage');
     if (prevPage) prevPage.addEventListener('click', function () { if (state.page > 1) { state.page--; loadNumbers(false); } });
-    var nextPage = document.getElementById('yinuoppNumberNextPage');
+    var nextPage = document.getElementById(cap + 'NumberNextPage');
     if (nextPage) nextPage.addEventListener('click', function () { if (state.page < state.pages) { state.page++; loadNumbers(false); } });
-    var selectAll = document.getElementById('yinuoppNumberSelectAll');
+    var selectAll = document.getElementById(cap + 'NumberSelectAll');
     if (selectAll) selectAll.addEventListener('change', function () {
-        document.querySelectorAll('.yinuopp-number-check').forEach(function (item) {
+        document.querySelectorAll('.' + checkClass).forEach(function (item) {
             item.checked = selectAll.checked;
             var row = item.closest('.card-item, .yinuopp-number-row');
             if (row) row.classList.toggle('is-selected', item.checked);
         });
     });
-    document.querySelectorAll('[data-yinuopp-number-batch]').forEach(function (button) {
+    document.querySelectorAll('[data-' + cap + '-number-batch]').forEach(function (button) {
         button.addEventListener('click', async function () {
             var ids = selectedIds();
-            var action = button.getAttribute('data-yinuopp-number-batch');
-            var msg = document.getElementById('yinuoppNumberBatchMsg');
+            var action = button.getAttribute('data-' + cap + '-number-batch');
+            var msg = document.getElementById(cap + 'NumberBatchMsg');
             if (!ids.length) { setText(msg, '请先选择手机号。'); return; }
-            if (action === 'delete' && !confirm('确定删除选中的一诺PP手机号吗？')) return;
-            if (action === 'disable' && !confirm('确定禁用选中的一诺PP手机号吗？')) return;
+            if (action === 'delete' && !confirm('确定删除选中的' + (cap === 'yinuocx' ? '一诺CX' : '一诺PP') + '手机号吗？')) return;
+            if (action === 'disable' && !confirm('确定禁用选中的' + (cap === 'yinuocx' ? '一诺CX' : '一诺PP') + '手机号吗？')) return;
             button.disabled = true;
             setText(msg, '正在操作...');
             try {
-                var result = await postAdmin('batch_yinuopp_numbers', { ids: ids.join(','), batch_action: action });
+                var result = await postAdmin('batch_' + cap + '_numbers', { ids: ids.join(','), batch_action: action });
                 setText(msg, result.message || '操作完成');
                 loadNumbers(false);
             } catch (error) {
@@ -992,6 +1054,8 @@ var lubanCardBoard = initCardBoard({
 
 initYinuoppModeSwitcher();
 var yinuoppNumberBoard = initYinuoppNumberBoard();
+initYinuoppModeSwitcher('yinuocx');
+var yinuocxNumberBoard = initYinuoppNumberBoard('yinuocx');
 
 var yinuoppCardBoard = initCardBoard({
     provider: 'yinuopp',
@@ -1013,6 +1077,29 @@ var yinuoppCardBoard = initCardBoard({
         prevPage: 'yinuoppCardPrevPage',
         nextPage: 'yinuoppCardNextPage',
         copyBtn: 'yinuoppCopyCardsBtn',
+    },
+});
+
+var yinuocxCardBoard = initCardBoard({
+    provider: 'yinuocx',
+    skipStats: true,
+    cacheKey: 'jmweb_card_filters_yinuocx',
+    statusName: 'yinuocx_card_status',
+    checkClass: 'yinuocx-card-check',
+    batchAttr: 'data-yinuocx-card-batch',
+    ids: {
+        list: 'yinuocxCardList',
+        stats: 'yinuocxCardStats',
+        limitSelect: 'yinuocxCardLimitSelect',
+        keyword: 'yinuocxCardKeyword',
+        summary: 'yinuocxCardListSummary',
+        pageInfo: 'yinuocxCardPageInfo',
+        selectAll: 'yinuocxCardSelectAll',
+        batchMsg: 'yinuocxCardBatchMsg',
+        refreshBtn: 'yinuocxCardRefreshBtn',
+        prevPage: 'yinuocxCardPrevPage',
+        nextPage: 'yinuocxCardNextPage',
+        copyBtn: 'yinuocxCopyCardsBtn',
     },
 });
 
@@ -1112,6 +1199,39 @@ if (yinuoppCardCreateForm) {
             setCardMessage(msg, result.message || '制作完成', result.ok ? 'success' : 'error');
             if (result.ok && yinuoppNumberBoard) yinuoppNumberBoard.loadNumbers(true);
             handleCardCreateSuccess(result, yinuoppCardBoard, { prefix: 'YN', projectId: 'PP' });
+        } catch (error) {
+            setCardMessage(msg, '制作失败：' + error.message, 'error');
+        } finally {
+            if (button) {
+                button.disabled = false;
+                button.textContent = '开始生成';
+            }
+        }
+    });
+}
+
+var yinuocxCardCreateForm = document.getElementById('yinuocxCardCreateForm');
+if (yinuocxCardCreateForm) {
+    yinuocxCardCreateForm.addEventListener('submit', async function (event) {
+        event.preventDefault();
+        var msg = document.getElementById('yinuocxCardCreateMsg');
+        var button = yinuocxCardCreateForm.querySelector('button[type="submit"]');
+        var data = new FormData(yinuocxCardCreateForm);
+        var count = parseInt(data.get('count'), 10) || 0;
+        if (count < 1 || count > 10000) {
+            setCardMessage(msg, '制作数量必须在 1 - 10000 之间。', 'error');
+            return;
+        }
+        if (button) {
+            button.disabled = true;
+            button.textContent = '制作中...';
+        }
+        setCardMessage(msg, '正在生成一诺CX兑换码，请稍等...');
+        try {
+            var result = await postAdmin('create_yinuocx_cards', { count: count });
+            setCardMessage(msg, result.message || '制作完成', result.ok ? 'success' : 'error');
+            if (result.ok && yinuocxNumberBoard) yinuocxNumberBoard.loadNumbers(true);
+            handleCardCreateSuccess(result, yinuocxCardBoard, { prefix: 'YC', projectId: 'CX' });
         } catch (error) {
             setCardMessage(msg, '制作失败：' + error.message, 'error');
         } finally {

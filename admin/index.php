@@ -36,6 +36,7 @@ $jmwebSettings = jmweb_read_settings();
                 <button class="side-link" data-page="cards">豪猪管理</button>
                 <button class="side-link" data-page="luban-cards">鲁班接码</button>
                 <button class="side-link" data-page="yinuopp-cards">一诺PP</button>
+                <button class="side-link" data-page="yinuocx-cards">一诺CX</button>
                 <button class="side-link" data-page="settings">基本设置</button>
             </div>
             <div class="side-menu-bottom">
@@ -466,6 +467,154 @@ $jmwebSettings = jmweb_read_settings();
                             <button class="btn ghost" type="button" id="yinuoppNumberPrevPage">上一页</button>
                             <span id="yinuoppNumberPageInfo">1 / 1</span>
                             <button class="btn ghost" type="button" id="yinuoppNumberNextPage">下一页</button>
+                        </div>
+                    </section>
+                    </div>
+                </div>
+            </section>
+
+            <section class="admin-page hidden" id="page-yinuocx-cards">
+                <div class="settings-hero-card card-hero-card">
+                    <div>
+                        <span class="eyebrow">Yinuo CX</span>
+                        <h2>一诺CX</h2>
+                        <p>同一诺PP逻辑，通过手动库存管理号码和接码 API，一行一个库存，生成独立兑换码。</p>
+                    </div>
+                    <div class="hero-actions">
+                        <button class="btn ghost" type="button" id="toggleYinuocxSettingsBtn">配置</button>
+                        <div class="settings-badge">库存制卡</div>
+                    </div>
+                </div>
+                <form id="yinuocxSettingsForm" class="settings-form modern-settings-form hidden">
+                    <div class="settings-card platform-settings-card">
+                        <div class="settings-card-head">
+                            <strong>一诺CX库存配置</strong>
+                            <span>格式：区号手机号|接码API，一行一个</span>
+                        </div>
+                        <div class="platform-config-panel">
+                            <div class="platform-config-head">
+                                <div>
+                                    <strong>一诺CX</strong>
+                                    <p>例如：+16309199343|http://a.62-us.com/api/get_sms?key=xxxx</p>
+                                </div>
+                                <span class="settings-badge">手动库存</span>
+                            </div>
+                            <div class="settings-grid">
+                                <label class="setting-field">一诺CX库存，一行一个
+                                    <textarea name="yinuocx_inventory" rows="8" maxlength="1000000" placeholder="+16309199343|http://a.62-us.com/api/get_sms?key=xxxx"><?= htmlspecialchars($jmwebSettings['yinuocx_inventory'], ENT_QUOTES, 'UTF-8') ?></textarea>
+                                </label>
+                            </div>
+                        </div>
+                        <div class="settings-actions inline-actions">
+                            <div id="yinuocxSettingsMsg" class="settings-msg"></div>
+                            <div class="hero-actions">
+                                <button class="btn primary" type="submit">保存一诺CX库存</button>
+                            </div>
+                        </div>
+                    </div>
+                </form>
+                <div class="cards-workspace">
+                    <section class="settings-card card-create-panel">
+                        <div class="settings-card-head">
+                            <strong>生成一诺CX兑换码</strong>
+                            <span>按库存数量生成</span>
+                        </div>
+                        <form id="yinuocxCardCreateForm" class="card-create-form">
+                            <label class="setting-field">制作数量
+                                <input name="count" type="number" min="1" max="10000" value="10" placeholder="不能超过当前库存">
+                            </label>
+                            <button class="btn primary full" type="submit">开始生成</button>
+                            <div id="yinuocxCardCreateMsg" class="settings-msg"></div>
+                        </form>
+                        <div class="card-stats yinuopp-stats-grid" id="yinuocxCardStats">
+                            <div><strong>0</strong><span>手机号总数</span></div>
+                            <div><strong>0</strong><span>正常可用</span></div>
+                            <div><strong>0</strong><span>已用次数</span></div>
+                            <div><strong>0</strong><span>接码成功</span></div>
+                            <div><strong>0</strong><span>问题号</span></div>
+                            <div><strong>0</strong><span>禁用号</span></div>
+                            <div><strong>0</strong><span>可用卡密</span></div>
+                            <div><strong>0</strong><span>已用卡密</span></div>
+                        </div>
+                    </section>
+                    <div class="yinuopp-detail-stack">
+                    <section class="settings-card card-list-panel yinuopp-mode-panel">
+                        <div class="card-list-toolbar">
+                            <div>
+                                <strong>一诺CX详情</strong>
+                                <span id="yinuocxModeSummary">请选择查看卡密详情或手机号详情</span>
+                            </div>
+                            <div class="yinuopp-mode-switch">
+                                <button class="btn primary" type="button" data-yinuocx-mode="cards">卡密详情</button>
+                                <button class="btn ghost" type="button" data-yinuocx-mode="numbers">手机号详情</button>
+                            </div>
+                        </div>
+                    </section>
+                    <section class="settings-card card-list-panel" id="yinuocxCardsPanel">
+                        <div class="card-list-toolbar">
+                            <div>
+                                <strong>一诺CX卡密详情</strong>
+                                <span id="yinuocxCardListSummary">一列显示 10 个</span>
+                            </div>
+                            <div class="card-toolbar-controls">
+                                <select id="yinuocxCardLimitSelect">
+                                    <option value="10">10</option><option value="50">50</option><option value="100">100</option><option value="500">500</option><option value="1000">1000</option><option value="5000">5000</option><option value="10000">10000</option>
+                                </select>
+                                <input id="yinuocxCardKeyword" placeholder="搜索卡密">
+                            </div>
+                        </div>
+                        <div class="card-filter-row">
+                            <label><input type="checkbox" name="yinuocx_card_status" value="available" checked> 可用</label>
+                            <label><input type="checkbox" name="yinuocx_card_status" value="used" checked> 已用</label>
+                            <label><input type="checkbox" name="yinuocx_card_status" value="disabled" checked> 禁用</label>
+                            <button class="btn ghost" type="button" id="yinuocxCardRefreshBtn">刷新</button>
+                        </div>
+                        <div class="card-batch-row">
+                            <label><input type="checkbox" id="yinuocxCardSelectAll"> 全选当前页</label>
+                            <button class="btn ghost" type="button" id="yinuocxCopyCardsBtn">复制卡密</button>
+                            <button class="btn ghost" type="button" data-yinuocx-card-batch="enable">启用</button>
+                            <button class="btn ghost danger-soft" type="button" data-yinuocx-card-batch="disable">禁用卡密</button>
+                            <button class="btn ghost danger-soft" type="button" data-yinuocx-card-batch="delete">删除</button>
+                            <span id="yinuocxCardBatchMsg" class="muted">可多选后批量操作</span>
+                        </div>
+                        <div id="yinuocxCardList" class="card-list empty">正在加载卡密...</div>
+                        <div class="card-pager">
+                            <button class="btn ghost" type="button" id="yinuocxCardPrevPage">上一页</button>
+                            <span id="yinuocxCardPageInfo">1 / 1</span>
+                            <button class="btn ghost" type="button" id="yinuocxCardNextPage">下一页</button>
+                        </div>
+                    </section>
+                    <section class="settings-card card-list-panel hidden" id="yinuocxNumbersPanel">
+                        <div class="card-list-toolbar">
+                            <div>
+                                <strong>一诺CX手机号详情</strong>
+                                <span id="yinuocxNumberListSummary">一列显示 10 个</span>
+                            </div>
+                            <div class="card-toolbar-controls">
+                                <select id="yinuocxNumberLimitSelect">
+                                    <option value="10">10</option><option value="50">50</option><option value="100">100</option><option value="500">500</option><option value="1000">1000</option><option value="5000">5000</option><option value="10000">10000</option>
+                                </select>
+                                <input id="yinuocxNumberKeyword" placeholder="搜索手机号/API">
+                            </div>
+                        </div>
+                        <div class="card-filter-row">
+                            <label><input type="checkbox" name="yinuocx_number_status" value="available" checked> 可用</label>
+                            <label><input type="checkbox" name="yinuocx_number_status" value="bad" checked> 问题</label>
+                            <label><input type="checkbox" name="yinuocx_number_status" value="disabled" checked> 禁用</label>
+                            <button class="btn ghost" type="button" id="yinuocxNumberRefreshBtn">刷新</button>
+                        </div>
+                        <div class="card-batch-row">
+                            <label><input type="checkbox" id="yinuocxNumberSelectAll"> 全选当前页</label>
+                            <button class="btn ghost" type="button" data-yinuocx-number-batch="enable">启用</button>
+                            <button class="btn ghost danger-soft" type="button" data-yinuocx-number-batch="disable">禁用手机号</button>
+                            <button class="btn ghost danger-soft" type="button" data-yinuocx-number-batch="delete">删除手机号</button>
+                            <span id="yinuocxNumberBatchMsg" class="muted">取消激活/更换手机号会自动记录为问题号</span>
+                        </div>
+                        <div id="yinuocxNumberList" class="card-list empty">正在加载手机号...</div>
+                        <div class="card-pager">
+                            <button class="btn ghost" type="button" id="yinuocxNumberPrevPage">上一页</button>
+                            <span id="yinuocxNumberPageInfo">1 / 1</span>
+                            <button class="btn ghost" type="button" id="yinuocxNumberNextPage">下一页</button>
                         </div>
                     </section>
                     </div>

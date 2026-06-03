@@ -1,8 +1,8 @@
 {
-  "version": "1.0.60",
+  "version": "1.0.62",
   "name": "豪猪接码",
   "repo": "https://github.com/Aze0920/StarlumeSite",
   "branch": "main",
   "release_date": "2026-06-03",
-  "description": "一诺PP手机号详情改为紧凑单行展示，并在问题次数超过3次时自动禁用手机号。"
+  "description": "新增一诺CX分支，复用一诺PP同款库存池、负载均衡、接码统计、问题号自动禁用和后台管理。"
 }
