@@ -229,6 +229,13 @@ code { padding: 3px 7px; border-radius: 8px; background: #eef2ff; color: #4338ca
 .card-list.empty { min-height: 220px; place-items: center; color: var(--muted); font-weight: 850; }
 .card-item { display: grid; grid-template-columns: auto minmax(210px, 1.2fr) auto repeat(3, minmax(120px, .75fr)); align-items: center; gap: 12px; padding: 12px 14px; border-radius: 16px; background: white; border: 1px solid #edf2f7; cursor: pointer; transition: .18s ease; }
 .card-item:hover, .card-item.is-selected { border-color: rgba(99, 91, 255, .42); background: #f5f7ff; box-shadow: 0 10px 24px rgba(99, 91, 255, .08); }
+.yinuopp-number-table { gap: 6px; padding: 8px; }
+.yinuopp-number-row { display: grid; grid-template-columns: 72px 90px minmax(150px, 1.2fr) minmax(120px, 1fr) 74px 90px 90px 90px; align-items: center; gap: 10px; min-height: 42px; padding: 8px 12px; border-radius: 12px; background: white; border: 1px solid #edf2f7; color: #344054; font-weight: 800; }
+.yinuopp-number-row:not(.yinuopp-number-head) { cursor: pointer; }
+.yinuopp-number-row:not(.yinuopp-number-head):hover, .yinuopp-number-row.is-selected { border-color: rgba(99, 91, 255, .42); background: #f5f7ff; }
+.yinuopp-number-head { position: sticky; top: 0; z-index: 2; min-height: 36px; background: #eef2ff; color: #475467; font-size: .82rem; box-shadow: 0 8px 18px rgba(16,24,40,.05); }
+.yinuopp-number-row .number-area, .yinuopp-number-row .number-local { color: #101828; font-weight: 950; letter-spacing: .03em; }
+.yinuopp-number-row .card-status { justify-self: start; }
 .card-no { font-weight: 950; letter-spacing: .06em; color: #101828; }
 .card-status { padding: 6px 10px; border-radius: 999px; font-weight: 900; font-size: .82rem; text-align: center; }
 .card-meta { color: #475467; font-size: .88rem; font-weight: 750; white-space: nowrap; }

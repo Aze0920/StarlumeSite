@@ -550,7 +550,7 @@ function initCardBoard(config) {
         if (!list) return;
         list.querySelectorAll('.' + config.checkClass).forEach(function (item) {
             item.checked = selectAll.checked;
-            var row = item.closest('.card-item');
+            var row = item.closest('.card-item, .yinuopp-number-row');
             if (row) row.classList.toggle('is-selected', item.checked);
         });
     });
@@ -679,17 +679,22 @@ function initYinuoppNumberBoard() {
             list.textContent = '暂无手机号。';
             return;
         }
-        list.className = 'card-list';
+        list.className = 'card-list yinuopp-number-table';
+        var head = document.createElement('div');
+        head.className = 'yinuopp-number-row yinuopp-number-head';
+        head.innerHTML = '<span>选择框</span><span>区号</span><span>手机号</span><span>最近接码</span><span>可用</span><span>接码次数</span><span>分配次数</span><span>问题次数</span>';
+        list.appendChild(head);
         numbers.forEach(function (number) {
             var item = document.createElement('label');
-            item.className = 'card-item status-' + escapeHtml(number.status || 'available');
-            item.innerHTML = '<input class="yinuopp-number-check" type="checkbox" value="' + number.id + '">' +
-                '<span class="card-no">' + escapeHtml(number.phone_display || number.phone || '-') + '</span>' +
+            item.className = 'yinuopp-number-row status-' + escapeHtml(number.status || 'available');
+            item.innerHTML = '<span><input class="yinuopp-number-check" type="checkbox" value="' + number.id + '"></span>' +
+                '<span class="number-area">' + escapeHtml(number.phone_area || '-') + '</span>' +
+                '<span class="number-local">' + escapeHtml(number.phone_local || number.phone || '-') + '</span>' +
+                '<span>' + escapeHtml(number.last_success_at_text || '-') + '</span>' +
                 '<span class="card-status">' + escapeHtml(number.status_label || '-') + '</span>' +
-                '<span class="card-meta"><b>接码次数：</b>' + escapeHtml(number.success_count || 0) + '</span>' +
-                '<span class="card-meta"><b>分配次数：</b>' + escapeHtml(number.use_count || 0) + '</span>' +
-                '<span class="card-meta"><b>问题次数：</b>' + escapeHtml(number.bad_count || 0) + '</span>' +
-                '<span class="card-meta"><b>最近接码：</b>' + escapeHtml(number.last_success_at_text || '-') + '</span>';
+                '<span>' + escapeHtml(number.success_count || 0) + '</span>' +
+                '<span>' + escapeHtml(number.use_count || 0) + '</span>' +
+                '<span>' + escapeHtml(number.bad_count || 0) + '</span>';
             list.appendChild(item);
         });
         bindCardDragSelect(list, 'yinuopp-number-check');
@@ -738,7 +743,7 @@ function initYinuoppNumberBoard() {
     if (selectAll) selectAll.addEventListener('change', function () {
         document.querySelectorAll('.yinuopp-number-check').forEach(function (item) {
             item.checked = selectAll.checked;
-            var row = item.closest('.card-item');
+            var row = item.closest('.card-item, .yinuopp-number-row');
             if (row) row.classList.toggle('is-selected', item.checked);
         });
     });
@@ -774,7 +779,7 @@ function bindCardDragSelect(list, checkClass) {
     var dragValue = true;
     var suppressClick = false;
     function setItemChecked(target) {
-        var item = target && target.closest ? target.closest('.card-item') : null;
+        var item = target && target.closest ? target.closest('.card-item, .yinuopp-number-row') : null;
         if (!item || !list.contains(item)) return;
         var checkbox = item.querySelector('.' + checkClass);
         if (!checkbox) return;
@@ -782,7 +787,7 @@ function bindCardDragSelect(list, checkClass) {
         item.classList.toggle('is-selected', checkbox.checked);
     }
     list.addEventListener('mousedown', function (event) {
-        var item = event.target.closest ? event.target.closest('.card-item') : null;
+        var item = event.target.closest ? event.target.closest('.card-item, .yinuopp-number-row') : null;
         if (!item || !list.contains(item)) return;
         var checkbox = item.querySelector('.' + checkClass);
         if (!checkbox) return;
@@ -807,7 +812,7 @@ function bindCardDragSelect(list, checkClass) {
     });
     list.addEventListener('change', function (event) {
         if (!event.target.classList.contains(checkClass)) return;
-        var item = event.target.closest('.card-item');
+        var item = event.target.closest('.card-item, .yinuopp-number-row');
         if (item) item.classList.toggle('is-selected', event.target.checked);
     });
 }

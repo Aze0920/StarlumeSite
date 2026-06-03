@@ -1,8 +1,8 @@
 {
-  "version": "1.0.59",
+  "version": "1.0.60",
   "name": "豪猪接码",
   "repo": "https://github.com/Aze0920/StarlumeSite",
   "branch": "main",
   "release_date": "2026-06-03",
-  "description": "简化前台兑换码提示，取消激活改为100秒后可用，并放大一诺PP库存导入长度限制与导入统计。"
+  "description": "一诺PP手机号详情改为紧凑单行展示，并在问题次数超过3次时自动禁用手机号。"
 }

@@ -515,6 +515,8 @@ try {
     function jmweb_yinuopp_inventory_stats($pdo = null)
     {
         $pdo = $pdo ?: jmweb_ensure_yinuopp_numbers_table();
+        $now = time();
+        $pdo->prepare("UPDATE jm_yinuopp_numbers SET status = 'disabled', updated_at = ? WHERE bad_count > 3 AND status <> 'disabled'")->execute(array($now));
         $stats = array('total' => 0, 'available' => 0, 'bad' => 0, 'disabled' => 0, 'used' => 0, 'success' => 0);
         $stmt = $pdo->query('SELECT status, COUNT(*) AS total, COALESCE(SUM(use_count), 0) AS uses, COALESCE(SUM(success_count), 0) AS successes FROM jm_yinuopp_numbers GROUP BY status');
         foreach ($stmt->fetchAll() as $row) {
@@ -586,7 +588,7 @@ try {
         $now = time();
         $where = $phone !== '' ? 'phone = ?' : 'sms_api = ?';
         $value = $phone !== '' ? $phone : $api;
-        $stmt = $pdo->prepare("UPDATE jm_yinuopp_numbers SET status = 'bad', bad_count = bad_count + 1, last_bad_at = ?, updated_at = ? WHERE {$where} AND status <> 'disabled'");
+        $stmt = $pdo->prepare("UPDATE jm_yinuopp_numbers SET status = CASE WHEN bad_count + 1 > 3 THEN 'disabled' ELSE 'bad' END, bad_count = bad_count + 1, last_bad_at = ?, updated_at = ? WHERE {$where} AND status <> 'disabled'");
         $stmt->execute(array($now, $now, $value));
     }
 
@@ -601,6 +603,8 @@ try {
             $row['created_at_text'] = !empty($row['created_at']) ? date('Y-m-d H:i', (int) $row['created_at']) : '-';
             $parts = jmweb_phone_public_parts(isset($row['phone']) ? $row['phone'] : '', isset($row['phone_country']) ? $row['phone_country'] : '');
             $row['phone_display'] = $parts['phone_display'];
+            $row['phone_area'] = $parts['phone_country'] !== '' ? ('+' . $parts['phone_country']) : '';
+            $row['phone_local'] = $parts['phone'];
             $result[] = $row;
         }
         return $result;
