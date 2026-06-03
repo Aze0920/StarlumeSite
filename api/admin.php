@@ -728,13 +728,20 @@ try {
         $now = time();
         $receivedAt = !empty($card['used_at']) ? (int) $card['used_at'] : 0;
         $provider = jmweb_card_provider($card);
+        if ($provider === 'yinuocx') {
+            $receivedAt = 0;
+        }
         $expireAt = !empty($card['expires_at']) ? (int) $card['expires_at'] : (in_array($provider, array('yinuopp', 'yinuocx'), true) ? 0 : ($now + 240));
         $phoneParts = jmweb_phone_public_parts(isset($card['phone']) ? $card['phone'] : '', isset($card['phone_country']) ? $card['phone_country'] : '');
         $activatedAt = !empty($card['updated_at']) ? (int) $card['updated_at'] : $now;
         $cancelAvailableAt = $receivedAt > 0 ? 0 : ($activatedAt + 100);
+        if ($provider === 'yinuocx') {
+            $cancelAvailableAt = 0;
+        }
         return array(
             'card_id' => (int) $card['id'],
             'card_no' => $card['card_no'],
+            'provider' => $provider,
             'phone' => $phoneParts['phone'],
             'phone_country' => $phoneParts['phone_country'],
             'phone_display' => $phoneParts['phone_display'],
@@ -744,7 +751,7 @@ try {
             'expires_at' => $expireAt,
             'cancel_available_at' => $cancelAvailableAt,
             'received_at' => $receivedAt,
-            'is_used' => isset($card['status']) && $card['status'] === 'used',
+            'is_used' => $provider === 'yinuocx' ? false : (isset($card['status']) && $card['status'] === 'used'),
             'remain_seconds' => $receivedAt > 0 ? 0 : max(0, $expireAt - $now),
         );
     }
@@ -782,7 +789,7 @@ try {
         if (!$card) {
             jmweb_api_json(array('ok' => false, 'message' => '兑换码不存在。'));
         }
-        if ($card['status'] === 'used') {
+        if ($card['status'] === 'used' && jmweb_card_provider($card) !== 'yinuocx') {
             jmweb_api_json(array('ok' => true, 'used' => true, 'received' => true, 'message' => '兑换码已使用，以下为本次接码数据。', 'activation' => jmweb_public_activation_payload($card, '已激活', isset($card['sms_code']) ? $card['sms_code'] : '', isset($card['sms_text']) ? $card['sms_text'] : '')));
         }
         if ($card['status'] === 'disabled') {
@@ -790,7 +797,10 @@ try {
         }
         $now = time();
         $currentProvider = jmweb_card_provider($card);
-        if (!empty($card['phone']) && (in_array($currentProvider, array('yinuopp', 'yinuocx'), true) || (!empty($card['expires_at']) && (int) $card['expires_at'] > $now))) {
+        if (!empty($card['phone']) && $currentProvider === 'yinuocx') {
+            jmweb_api_json(array('ok' => true, 'message' => '手机号已绑定，可无限次接收验证码。', 'activation' => jmweb_public_activation_payload($card, '等待验证码', '', '')));
+        }
+        if (!empty($card['phone']) && ($currentProvider === 'yinuopp' || (!empty($card['expires_at']) && (int) $card['expires_at'] > $now))) {
             jmweb_api_json(array('ok' => true, 'message' => '手机号已获取，正在等待验证码。', 'activation' => jmweb_public_activation_payload($card, '等待验证码', '', '')));
         }
 
@@ -885,7 +895,7 @@ try {
         if (!$card || empty($card['phone'])) {
             jmweb_api_json(array('ok' => false, 'message' => '没有可查询的手机号。'));
         }
-        if ($card['status'] === 'used') {
+        if ($card['status'] === 'used' && jmweb_card_provider($card) !== 'yinuocx') {
             jmweb_api_json(array('ok' => true, 'received' => true, 'message' => '已接到验证码，以下为本次接码数据。', 'activation' => jmweb_public_activation_payload($card, '已激活', isset($card['sms_code']) ? $card['sms_code'] : '', isset($card['sms_text']) ? $card['sms_text'] : '')));
         }
         $provider = jmweb_card_provider($card);
@@ -903,6 +913,17 @@ try {
             $sms = jmweb_yinuopp_get_sms($apiUrl);
             if (!empty($sms['ok'])) {
                 $now = time();
+                if ($provider === 'yinuocx') {
+                    $update = $pdo->prepare('UPDATE jm_cards SET status = ?, sms_code = ?, sms_text = ?, used_at = ?, updated_at = ? WHERE id = ? AND status != ?');
+                    $update->execute(array('available', $sms['code'], $sms['sms'], $now, $now, $card['id'], 'disabled'));
+                    $numberUpdate = $pdo->prepare("UPDATE `{$table}` SET success_count = success_count + 1, last_success_at = ?, updated_at = ? WHERE phone = ?");
+                    $numberUpdate->execute(array($now, $now, $card['phone']));
+                    $card['status'] = 'available';
+                    $card['sms_code'] = $sms['code'];
+                    $card['sms_text'] = $sms['sms'];
+                    $card['used_at'] = $now;
+                    jmweb_api_json(array('ok' => true, 'received' => true, 'message' => '已收到验证码，卡密可继续重复接码。', 'activation' => jmweb_public_activation_payload($card, '已收到验证码', $sms['code'], $sms['sms'])));
+                }
                 $update = $pdo->prepare('UPDATE jm_cards SET status = ?, sms_code = ?, sms_text = ?, used_at = ?, updated_at = ? WHERE id = ? AND status = ?');
                 $update->execute(array('used', $sms['code'], $sms['sms'], $now, $now, $card['id'], 'available'));
                 $numberUpdate = $pdo->prepare("UPDATE `{$table}` SET success_count = success_count + 1, last_success_at = ?, updated_at = ? WHERE phone = ?");
@@ -971,6 +992,10 @@ try {
         $card = $stmt->fetch();
         if (!$card) {
             jmweb_api_json(array('ok' => false, 'message' => '卡密不存在。'));
+        }
+        $provider = jmweb_card_provider($card);
+        if ($provider === 'yinuocx') {
+            jmweb_api_json(array('ok' => false, 'message' => '一诺CX卡密固定绑定手机号，不允许取消或更换手机号。', 'activation' => jmweb_public_activation_payload($card, '等待验证码', '', '')));
         }
         if ($card['status'] === 'used') {
             jmweb_api_json(array('ok' => false, 'message' => '已收到验证码，兑换券已消费，不能取消。'));
@@ -1195,10 +1220,48 @@ try {
             jmweb_api_json(array('ok' => false, 'message' => $meta['label'] . '当前没有可用手机号，请在手机号详情中启用或导入库存。'));
         }
 
-        $insert = $pdo->prepare('INSERT IGNORE INTO jm_cards (card_no, project_id, status, provider_host, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)');
         $created = 0;
         $cards = array();
         $now = time();
+
+        if ($yinuoProvider === 'yinuocx') {
+            $table = $meta['table'];
+            $availableStmt = $pdo->query("SELECT n.* FROM `{$table}` n LEFT JOIN jm_cards c ON c.phone = n.phone AND c.provider_host = 'yinuocx' AND c.card_no LIKE 'YC-%' WHERE n.status = 'available' AND c.id IS NULL ORDER BY n.use_count ASC, n.last_used_at ASC, n.id ASC LIMIT " . (int) $count);
+            $numbers = $availableStmt->fetchAll();
+            if (count($numbers) < $count) {
+                jmweb_api_json(array('ok' => false, 'message' => '一诺CX可绑定手机号不足，当前未绑定可用手机号 ' . count($numbers) . ' 个，请先导入更多库存或删除无用卡密。'));
+            }
+            $insert = $pdo->prepare('INSERT IGNORE INTO jm_cards (card_no, project_id, status, phone, phone_country, provider_host, provider_token, expires_at, sms_code, sms_text, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)');
+            $numberUpdate = $pdo->prepare("UPDATE `{$table}` SET use_count = use_count + 1, last_used_at = ?, updated_at = ? WHERE id = ?");
+            $tries = 0;
+            foreach ($numbers as $number) {
+                if ($created >= $count) break;
+                $inserted = false;
+                while (!$inserted && $tries < ($count * 8 + 80)) {
+                    $tries++;
+                    $cardNo = jmweb_generate_card_no($meta['project'], $yinuoProvider);
+                    $phoneCountry = !empty($number['phone_country']) ? $number['phone_country'] : jmweb_detect_phone_country_code($number['phone']);
+                    $insert->execute(array($cardNo, $meta['project'], 'available', $number['phone'], $phoneCountry, $yinuoProvider, $number['sms_api'], 0, '', '', $now, $now));
+                    if ($insert->rowCount() > 0) {
+                        $numberUpdate->execute(array($now, $now, $number['id']));
+                        $created++;
+                        $cards[] = $cardNo;
+                        $inserted = true;
+                    }
+                }
+            }
+            jmweb_log('管理员生成' . $meta['label'] . '固定手机号兑换码，数量：' . $created);
+            jmweb_api_json(array(
+                'ok' => $created === $count,
+                'message' => $created === $count ? '已成功生成 ' . $created . ' 个一诺CX兑换码，每个卡密已固定绑定 1 个手机号，可无限次接收验证码。' : '只成功生成 ' . $created . ' 个一诺CX兑换码，请重试。',
+                'created' => $created,
+                'cards' => $cards,
+                'sample' => array_slice($cards, 0, 100),
+                $yinuoProvider . '_stats' => jmweb_yinuopp_inventory_stats($pdo, $yinuoProvider),
+            ));
+        }
+
+        $insert = $pdo->prepare('INSERT IGNORE INTO jm_cards (card_no, project_id, status, provider_host, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)');
         $tries = 0;
         while ($created < $count && $tries < ($count * 8 + 80)) {
             $tries++;

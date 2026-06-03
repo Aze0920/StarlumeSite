@@ -114,7 +114,15 @@
         currentActivation.phone_country = data.phone_country || detectPhoneCountryCode(displayPhone);
         if (activationState) activationState.textContent = data.state || '-';
         if (activationCode) activationCode.textContent = data.code || '等待中';
-        if (data.is_used || data.received_at) {
+        if (data.provider === 'yinuocx') {
+            if (activationTimeLabel) activationTimeLabel.textContent = '绑定状态';
+            if (activationExpiry) activationExpiry.textContent = '固定绑定，可重复接码';
+            if (cancelActivation) {
+                cancelActivation.disabled = true;
+                cancelActivation.textContent = '不可更换';
+            }
+            if (cancelCountdown) cancelCountdown.textContent = '一诺CX固定绑定手机号，不允许取消或更换。';
+        } else if (data.is_used || data.received_at) {
             if (activationTimeLabel) activationTimeLabel.textContent = '接码时间';
             if (activationExpiry) activationExpiry.textContent = data.received_at ? formatTimeBySeconds(data.received_at) : '-';
             if (cancelActivation) {
@@ -245,6 +253,12 @@
     if (cancelActivation) {
         cancelActivation.addEventListener('click', function () {
             if (!currentActivation || !currentActivation.card_id) return;
+            if (currentActivation.provider === 'yinuocx') {
+                setMessage('一诺CX固定绑定手机号，不允许取消或更换。', 'info');
+                cancelActivation.disabled = true;
+                cancelActivation.textContent = '不可更换';
+                return;
+            }
             cancelActivation.disabled = true;
             setMessage('正在取消当前号码...', 'info');
             postPublic('cancel_activation', { card_id: currentActivation.card_id }).then(function (result) {

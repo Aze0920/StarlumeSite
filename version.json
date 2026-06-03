@@ -1,8 +1,8 @@
 {
-  "version": "1.0.66",
+  "version": "1.0.67",
   "name": "豪猪接码",
   "repo": "https://github.com/Aze0920/StarlumeSite",
   "branch": "main",
   "release_date": "2026-06-03",
-  "description": "为一诺CX后台补充独立兜底交互逻辑，覆盖配置展开、库存导入、卡密生成、卡密详情、手机号详情、分页、刷新、复制和批量操作。"
+  "description": "调整一诺CX为生成卡密时固定绑定一个手机号，卡密不再因收到验证码变为已用，可重复无限接码，并禁止前台取消或更换手机号。"
 }
