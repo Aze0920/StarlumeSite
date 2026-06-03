@@ -1,8 +1,8 @@
 {
-  "version": "1.0.64",
+  "version": "1.0.65",
   "name": "豪猪接码",
   "repo": "https://github.com/Aze0920/StarlumeSite",
   "branch": "main",
   "release_date": "2026-06-03",
-  "description": "为一诺CX配置按钮增加页面内兜底展开逻辑，避免脚本缓存或绑定异常导致点击无响应。"
+  "description": "将一诺CX配置展开逻辑恢复为一诺PP同款独立绑定，保持两个平台独立配置和独立管理。"
 }
