@@ -481,7 +481,7 @@ $jmwebSettings = jmweb_read_settings();
                         <p>同一诺PP逻辑，通过手动库存管理号码和接码 API，一行一个库存，生成独立兑换码。</p>
                     </div>
                     <div class="hero-actions">
-                        <button class="btn ghost" type="button" id="toggleYinuocxSettingsBtn">配置</button>
+                        <button class="btn ghost" type="button" id="toggleYinuocxSettingsBtn" onclick="var f=document.getElementById('yinuocxSettingsForm');if(f){var h=f.classList.toggle('hidden');this.textContent=h?'配置':'收起配置';}return false;">配置</button>
                         <div class="settings-badge">库存制卡</div>
                     </div>
                 </div>
