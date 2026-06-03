@@ -129,16 +129,12 @@
             if (data.expires_at) {
                 if (activationTimeLabel) activationTimeLabel.textContent = '到期时间';
                 if (activationExpiry) activationExpiry.textContent = formatTimeBySeconds(data.expires_at);
-                startCountdown(data.expires_at);
             } else {
                 if (activationTimeLabel) activationTimeLabel.textContent = '到期时间';
                 if (activationExpiry) activationExpiry.textContent = '-';
-                if (cancelActivation) cancelActivation.disabled = false;
-                if (cancelCountdown) cancelCountdown.textContent = '无固定到期时间，可随时更换号码';
-                if (countdownTimer) clearInterval(countdownTimer);
-                countdownTimer = null;
             }
             if (cancelActivation) cancelActivation.textContent = '取消激活';
+            startCountdown(data.expires_at || 0, data.cancel_available_at || 0);
         }
         if (copyPhoneButton) copyPhoneButton.disabled = !copyPhone;
     }
@@ -148,13 +144,15 @@
         pollTimer = null;
     }
 
-    function startCountdown(expiresAt) {
+    function startCountdown(expiresAt, cancelAvailableAt) {
         if (countdownTimer) clearInterval(countdownTimer);
         var tick = function () {
-            var remain = Math.max(0, (expiresAt || 0) - Math.floor(Date.now() / 1000));
-            if (cancelActivation) cancelActivation.disabled = remain > 0;
-            if (cancelCountdown) cancelCountdown.textContent = remain > 0 ? remain + ' 秒后可更换号码' : '可以更换号码';
-            if (remain <= 0) {
+            var now = Math.floor(Date.now() / 1000);
+            var cancelRemain = Math.max(0, (cancelAvailableAt || 0) - now);
+            var expireRemain = expiresAt ? Math.max(0, expiresAt - now) : 0;
+            if (cancelActivation) cancelActivation.disabled = cancelRemain > 0;
+            if (cancelCountdown) cancelCountdown.textContent = cancelRemain > 0 ? cancelRemain + ' 秒后可取消激活' : '可以取消激活';
+            if (expiresAt && expireRemain <= 0) {
                 stopPolling();
                 if (activationState && currentActivation && !currentActivation.code) activationState.textContent = '已超时';
                 if (countdownTimer) clearInterval(countdownTimer);
@@ -262,7 +260,10 @@
             }).catch(function (error) {
                 setMessage('取消失败：' + error.message, 'error');
             }).finally(function () {
-                cancelActivation.disabled = false;
+                if (cancelActivation) {
+                    var cancelAt = currentActivation && currentActivation.cancel_available_at ? currentActivation.cancel_available_at : 0;
+                    cancelActivation.disabled = cancelAt > Math.floor(Date.now() / 1000);
+                }
             });
         });
     }

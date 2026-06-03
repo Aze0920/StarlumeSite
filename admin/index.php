@@ -340,7 +340,7 @@ $jmwebSettings = jmweb_read_settings();
                             </div>
                             <div class="settings-grid">
                                 <label class="setting-field">一诺PP库存，一行一个
-                                    <textarea name="yinuopp_inventory" rows="8" maxlength="20000" placeholder="+16309199343|http://a.62-us.com/api/get_sms?key=xxxx"><?= htmlspecialchars($jmwebSettings['yinuopp_inventory'], ENT_QUOTES, 'UTF-8') ?></textarea>
+                                    <textarea name="yinuopp_inventory" rows="8" maxlength="1000000" placeholder="+16309199343|http://a.62-us.com/api/get_sms?key=xxxx"><?= htmlspecialchars($jmwebSettings['yinuopp_inventory'], ENT_QUOTES, 'UTF-8') ?></textarea>
                                 </label>
                             </div>
                         </div>
@@ -363,7 +363,7 @@ $jmwebSettings = jmweb_read_settings();
                                 <input name="count" type="number" min="1" max="10000" value="10" placeholder="不能超过当前库存">
                             </label>
                             <button class="btn primary full" type="submit">开始生成</button>
-                            <div id="yinuoppCardCreateMsg" class="settings-msg">手机号池循环复用；当前已用 0 次，可用 0 个（可用=手机号总数）。</div>
+                            <div id="yinuoppCardCreateMsg" class="settings-msg"></div>
                         </form>
                         <div class="card-stats yinuopp-stats-grid" id="yinuoppCardStats">
                             <div><strong>0</strong><span>手机号总数</span></div>

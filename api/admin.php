@@ -533,15 +533,32 @@ try {
     function jmweb_yinuopp_import_inventory($inventory)
     {
         $pdo = jmweb_ensure_yinuopp_numbers_table();
+        $raw = str_replace(array("\r\n", "\r"), "\n", (string) $inventory);
+        $submitted = 0;
+        foreach (explode("\n", $raw) as $line) {
+            if (trim($line) !== '') {
+                $submitted++;
+            }
+        }
         $items = jmweb_yinuopp_inventory_items($inventory);
+        $unique = array();
+        foreach ($items as $item) {
+            $unique[$item['phone']] = $item;
+        }
         $now = time();
         $insert = $pdo->prepare('INSERT INTO jm_yinuopp_numbers (phone, phone_country, sms_api, status, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?) ON DUPLICATE KEY UPDATE phone_country = VALUES(phone_country), sms_api = VALUES(sms_api), status = IF(status = \'disabled\', status, \'available\'), updated_at = VALUES(updated_at)');
         $imported = 0;
-        foreach ($items as $item) {
+        foreach ($unique as $item) {
             $insert->execute(array($item['phone'], $item['country'], $item['api'], 'available', $now, $now));
             $imported++;
         }
-        return array('imported' => $imported, 'stats' => jmweb_yinuopp_inventory_stats($pdo));
+        return array(
+            'submitted' => $submitted,
+            'valid' => count($items),
+            'duplicates' => max(0, count($items) - count($unique)),
+            'imported' => $imported,
+            'stats' => jmweb_yinuopp_inventory_stats($pdo),
+        );
     }
 
     function jmweb_yinuopp_pick_number($pdo)
@@ -682,6 +699,8 @@ try {
         $provider = jmweb_card_provider($card);
         $expireAt = !empty($card['expires_at']) ? (int) $card['expires_at'] : ($provider === 'yinuopp' ? 0 : ($now + 240));
         $phoneParts = jmweb_phone_public_parts(isset($card['phone']) ? $card['phone'] : '', isset($card['phone_country']) ? $card['phone_country'] : '');
+        $activatedAt = !empty($card['updated_at']) ? (int) $card['updated_at'] : $now;
+        $cancelAvailableAt = $receivedAt > 0 ? 0 : ($activatedAt + 100);
         return array(
             'card_id' => (int) $card['id'],
             'card_no' => $card['card_no'],
@@ -692,6 +711,7 @@ try {
             'code' => $code !== '' ? $code : (isset($card['sms_code']) ? $card['sms_code'] : ''),
             'sms' => $sms !== '' ? $sms : (isset($card['sms_text']) ? $card['sms_text'] : ''),
             'expires_at' => $expireAt,
+            'cancel_available_at' => $cancelAvailableAt,
             'received_at' => $receivedAt,
             'is_used' => isset($card['status']) && $card['status'] === 'used',
             'remain_seconds' => $receivedAt > 0 ? 0 : max(0, $expireAt - $now),
@@ -921,8 +941,9 @@ try {
         if ($card['status'] === 'used') {
             jmweb_api_json(array('ok' => false, 'message' => '已收到验证码，兑换券已消费，不能取消。'));
         }
-        if (!empty($card['expires_at']) && (int) $card['expires_at'] > time()) {
-            jmweb_api_json(array('ok' => false, 'message' => '240 秒内持续获取验证码，暂不能更换号码。', 'activation' => jmweb_public_activation_payload($card, '等待验证码', '', '')));
+        $cancelAvailableAt = !empty($card['updated_at']) ? ((int) $card['updated_at'] + 100) : 0;
+        if (!empty($card['phone']) && $cancelAvailableAt > time()) {
+            jmweb_api_json(array('ok' => false, 'message' => '100 秒内持续获取验证码，暂不能取消激活。', 'activation' => jmweb_public_activation_payload($card, '等待验证码', '', '')));
         }
         $provider = jmweb_card_provider($card);
         if ($provider === 'yinuopp') {
@@ -980,7 +1001,7 @@ try {
         $settings = jmweb_clean_settings($_POST);
         $yinuoppImport = null;
         if (isset($_POST['yinuopp_inventory']) && trim((string) $_POST['yinuopp_inventory']) !== '') {
-            $yinuoppImport = jmweb_yinuopp_import_inventory($settings['yinuopp_inventory']);
+            $yinuoppImport = jmweb_yinuopp_import_inventory($_POST['yinuopp_inventory']);
             $settings['yinuopp_inventory'] = '';
         }
         if (!jmweb_save_settings($settings)) {
@@ -989,7 +1010,11 @@ try {
         jmweb_log('管理员保存基本设置');
         $message = '基本设置已保存。';
         if ($yinuoppImport !== null) {
-            $message = '已导入 ' . (int) $yinuoppImport['imported'] . ' 条一诺PP手机号，输入框已清空，可在手机号详情管理。';
+            $message = '已处理 ' . (int) $yinuoppImport['submitted'] . ' 行，成功导入/更新 ' . (int) $yinuoppImport['imported'] . ' 个一诺PP手机号。';
+            if (!empty($yinuoppImport['duplicates'])) {
+                $message .= ' 去重 ' . (int) $yinuoppImport['duplicates'] . ' 行。';
+            }
+            $message .= ' 输入框已清空，可在手机号详情管理。';
         }
         jmweb_api_json(array('ok' => true, 'message' => $message, 'settings' => jmweb_public_settings($settings), 'yinuopp_stats' => $yinuoppImport !== null ? $yinuoppImport['stats'] : null));
     }

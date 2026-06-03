@@ -1,8 +1,8 @@
 {
-  "version": "1.0.58",
+  "version": "1.0.59",
   "name": "豪猪接码",
   "repo": "https://github.com/Aze0920/StarlumeSite",
   "branch": "main",
   "release_date": "2026-06-03",
-  "description": "统一所有前台接码取号失败提示，不暴露具体供应商、接口或后台配置细节。"
+  "description": "简化前台兑换码提示，取消激活改为100秒后可用，并放大一诺PP库存导入长度限制与导入统计。"
 }

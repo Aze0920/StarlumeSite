@@ -610,10 +610,6 @@ var yinuoppCardStatsData = {};
 function renderYinuoppCombinedStats() {
     var stats = yinuoppNumberStatsData || {};
     var cards = yinuoppCardStatsData || {};
-    var el = document.getElementById('yinuoppCardCreateMsg');
-    if (el) {
-        el.textContent = '手机号池循环复用；当前已用 ' + (stats.used || 0) + ' 次，可用 ' + (stats.total || 0) + ' 个（其中正常 ' + (stats.available || 0) + ' 个，问题 ' + (stats.bad || 0) + ' 个）。';
-    }
     var statBox = document.getElementById('yinuoppCardStats');
     if (!statBox) return;
     var items = [
