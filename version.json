@@ -1,8 +1,8 @@
 {
-  "version": "1.0.67",
+  "version": "1.0.68",
   "name": "豪猪接码",
   "repo": "https://github.com/Aze0920/StarlumeSite",
   "branch": "main",
   "release_date": "2026-06-03",
-  "description": "调整一诺CX为生成卡密时固定绑定一个手机号，卡密不再因收到验证码变为已用，可重复无限接码，并禁止前台取消或更换手机号。"
+  "description": "将一诺CX前台绑定状态显示改为上次接码时间，并保持固定绑定、不可更换和可重复接码逻辑。"
 }

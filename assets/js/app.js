@@ -115,8 +115,8 @@
         if (activationState) activationState.textContent = data.state || '-';
         if (activationCode) activationCode.textContent = data.code || '等待中';
         if (data.provider === 'yinuocx') {
-            if (activationTimeLabel) activationTimeLabel.textContent = '绑定状态';
-            if (activationExpiry) activationExpiry.textContent = '固定绑定，可重复接码';
+            if (activationTimeLabel) activationTimeLabel.textContent = '上次接码时间';
+            if (activationExpiry) activationExpiry.textContent = data.last_received_at ? formatTimeBySeconds(data.last_received_at) : '-';
             if (cancelActivation) {
                 cancelActivation.disabled = true;
                 cancelActivation.textContent = '不可更换';

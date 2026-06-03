@@ -751,6 +751,7 @@ try {
             'expires_at' => $expireAt,
             'cancel_available_at' => $cancelAvailableAt,
             'received_at' => $receivedAt,
+            'last_received_at' => !empty($card['used_at']) ? (int) $card['used_at'] : 0,
             'is_used' => $provider === 'yinuocx' ? false : (isset($card['status']) && $card['status'] === 'used'),
             'remain_seconds' => $receivedAt > 0 ? 0 : max(0, $expireAt - $now),
         );
